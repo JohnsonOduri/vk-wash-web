@@ -1,9 +1,6 @@
-
 import { Button } from '@/components/ui/button';
-
 const Hero = () => {
-  return (
-    <section id="home" className="relative min-h-screen flex items-center justify-center pt-16">
+  return <section id="home" className="relative min-h-screen flex items-center justify-center pt-16">
       <div className="absolute inset-0 bg-gradient-to-b from-gray-100 to-white z-0"></div>
       <div className="container-custom relative z-10">
         <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-16">
@@ -26,35 +23,31 @@ const Hero = () => {
             <div className="relative w-64 h-64 md:w-80 md:h-80 lg:w-96 lg:h-96">
               <div className="absolute inset-0 bg-blue rounded-full opacity-10 animate-pulse"></div>
               <div className="absolute inset-0 flex items-center justify-center">
-                <img 
-                  src="/lovable-uploads/198fd8c7-14bf-4b95-bca5-dce17b20b362.png"
-                  alt="VK Wash Logo"
-                  className="w-3/4 h-3/4 object-contain"
-                />
+                <img alt="VK Wash Logo" src="/lovable-uploads/75ef8297-15b5-46ca-ab68-b833491cb6d2.png" className="w-3/4 h-3/4 object-cover" />
               </div>
             </div>
           </div>
         </div>
         
         <div className="mt-16 lg:mt-24 grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
-          {[
-            { count: '5+', label: 'Years Experience' },
-            { count: '1000+', label: 'Happy Customers' },
-            { count: '24h', label: 'Fast Turnaround' },
-            { count: '100%', label: 'Satisfaction' }
-          ].map((stat, index) => (
-            <div 
-              key={index} 
-              className="text-center p-4 rounded-lg bg-white shadow-sm card-hover"
-            >
+          {[{
+          count: '5+',
+          label: 'Years Experience'
+        }, {
+          count: '1000+',
+          label: 'Happy Customers'
+        }, {
+          count: '24h',
+          label: 'Fast Turnaround'
+        }, {
+          count: '100%',
+          label: 'Satisfaction'
+        }].map((stat, index) => <div key={index} className="text-center p-4 rounded-lg bg-white shadow-sm card-hover">
               <div className="text-3xl font-bold text-blue mb-2">{stat.count}</div>
               <div className="text-gray-600">{stat.label}</div>
-            </div>
-          ))}
+            </div>)}
         </div>
       </div>
-    </section>
-  );
+    </section>;
 };
-
 export default Hero;
