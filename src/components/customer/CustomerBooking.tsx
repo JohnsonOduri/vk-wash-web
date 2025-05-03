@@ -68,11 +68,11 @@ const CustomerBooking = () => {
     defaultValues: {
       serviceType: 'Regular',
       items: {
-        shirts: '0',
-        pants: '0',
-        suits: '0',
-        dresses: '0',
-        other: '0',
+        shirts: 0,
+        pants: 0,
+        suits: 0,
+        dresses: 0,
+        other: 0,
       },
       pickupAddress: '',
       pickupDate: new Date().toISOString().split('T')[0],
