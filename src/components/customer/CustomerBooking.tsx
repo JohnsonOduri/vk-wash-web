@@ -1,16 +1,17 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Shirt, Clock, Star, ArrowRight, Check, Package } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Form } from '@/components/ui/form';
 import { toast } from '@/hooks/use-toast';
+
+// Import our new components
+import ServiceTypeSelection from './ServiceTypeSelection';
+import ItemsSelection from './ItemsSelection';
+import PickupDetails from './PickupDetails';
+import OrderSummary from './OrderSummary';
 
 const formSchema = z.object({
   serviceType: z.enum(['Regular', 'Premium', 'Express'], {
@@ -34,30 +35,6 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
-
-const serviceOptions = [
-  {
-    value: 'Regular',
-    title: 'Regular Service',
-    description: '3-4 Day Turnaround',
-    price: 'Standard pricing',
-    icon: <Shirt className="h-5 w-5" />
-  },
-  {
-    value: 'Premium',
-    title: 'Premium Service',
-    description: '2-3 Day Turnaround',
-    price: '+20% on standard',
-    icon: <Star className="h-5 w-5" />
-  },
-  {
-    value: 'Express',
-    title: 'Express Service',
-    description: '24 Hour Turnaround',
-    price: '+50% on standard',
-    icon: <Clock className="h-5 w-5" />
-  }
-];
 
 const CustomerBooking = () => {
   const navigate = useNavigate();
@@ -128,210 +105,10 @@ const CustomerBooking = () => {
       
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Service Type</CardTitle>
-              <CardDescription>Choose the service that best fits your needs</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <FormField
-                control={form.control}
-                name="serviceType"
-                render={({ field }) => (
-                  <FormItem className="space-y-3">
-                    <FormControl>
-                      <RadioGroup 
-                        onValueChange={field.onChange} 
-                        defaultValue={field.value}
-                        className="grid grid-cols-1 md:grid-cols-3 gap-4"
-                      >
-                        {serviceOptions.map((option) => (
-                          <FormItem key={option.value}>
-                            <FormLabel className="cursor-pointer">
-                              <FormControl>
-                                <RadioGroupItem 
-                                  value={option.value} 
-                                  className="sr-only"
-                                />
-                              </FormControl>
-                              <Card className={`border-2 transition-all hover:border-blue ${field.value === option.value ? 'border-blue bg-blue/5' : 'border-gray-200'}`}>
-                                <CardContent className="p-4">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center space-x-2">
-                                      <div className={`p-1.5 rounded-full ${field.value === option.value ? 'bg-blue text-white' : 'bg-gray-100'}`}>
-                                        {option.icon}
-                                      </div>
-                                      <div>
-                                        <h4 className="font-medium">{option.title}</h4>
-                                        <p className="text-sm text-gray-500">{option.description}</p>
-                                      </div>
-                                    </div>
-                                    {field.value === option.value && (
-                                      <Check className="h-5 w-5 text-blue" />
-                                    )}
-                                  </div>
-                                  <div className="mt-2 text-sm font-medium">
-                                    {option.price}
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            </FormLabel>
-                          </FormItem>
-                        ))}
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Items</CardTitle>
-              <CardDescription>Enter the number of items to be serviced</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="items.shirts"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Shirts</FormLabel>
-                      <FormControl>
-                        <Input type="number" min="0" {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="items.pants"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Pants</FormLabel>
-                      <FormControl>
-                        <Input type="number" min="0" {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="items.suits"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Suits</FormLabel>
-                      <FormControl>
-                        <Input type="number" min="0" {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="items.dresses"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Dresses</FormLabel>
-                      <FormControl>
-                        <Input type="number" min="0" {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="items.other"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Other Items</FormLabel>
-                      <FormControl>
-                        <Input type="number" min="0" {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Pickup Details</CardTitle>
-              <CardDescription>Enter details for laundry pickup</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="pickupAddress"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Pickup Address</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter your full address" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="pickupDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Pickup Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="specialInstructions"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Special Instructions (Optional)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Any special instructions for pickup or cleaning" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Order Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-lg font-semibold flex justify-between">
-                <span>Estimated Total:</span>
-                <span>${calculateTotal().toFixed(2)}</span>
-              </div>
-              <p className="text-sm text-gray-500 mt-2">
-                Final price may vary based on weight and specific requirements.
-              </p>
-            </CardContent>
-            <CardFooter>
-              <Button type="submit" className="w-full" disabled={submitting}>
-                {submitting ? (
-                  <>Processing...</>
-                ) : (
-                  <>
-                    <Package className="h-5 w-5 mr-2" />
-                    Place Order
-                  </>
-                )}
-              </Button>
-            </CardFooter>
-          </Card>
+          <ServiceTypeSelection control={form.control} />
+          <ItemsSelection control={form.control} />
+          <PickupDetails control={form.control} />
+          <OrderSummary total={calculateTotal()} submitting={submitting} />
         </form>
       </Form>
     </div>
