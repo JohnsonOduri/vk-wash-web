@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Star, Send, ArrowLeft } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -138,11 +139,10 @@ const Reviews = () => {
                     <FormItem>
                       <FormLabel>Your Comment</FormLabel>
                       <FormControl>
-                        <Input
+                        <Textarea
                           placeholder="Tell us about your experience..."
-                          {...field}
                           className="min-h-[100px] resize-none"
-                          as="textarea"
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage />
