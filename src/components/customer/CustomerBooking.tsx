@@ -1,114 +1,151 @@
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Form } from '@/components/ui/form';
+import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
+import ServiceTypeSelection from '@/components/customer/ServiceTypeSelection';
+import ItemsSelection from '@/components/customer/ItemsSelection';
+import PickupDetails from '@/components/customer/PickupDetails';
+import OrderSummary from '@/components/customer/OrderSummary';
+import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
+import { createOrder } from '@/services/orderService';
+import { useNavigate } from 'react-router-dom';
 
-// Import our new components
-import ServiceTypeSelection from './ServiceTypeSelection';
-import ItemsSelection from './ItemsSelection';
-import PickupDetails from './PickupDetails';
-import OrderSummary from './OrderSummary';
-
-const formSchema = z.object({
-  serviceType: z.enum(['Regular', 'Premium', 'Express'], {
-    required_error: "Please select a service type",
-  }),
-  items: z.object({
-    shirts: z.string().transform((val) => parseInt(val) || 0),
-    pants: z.string().transform((val) => parseInt(val) || 0),
-    suits: z.string().transform((val) => parseInt(val) || 0),
-    dresses: z.string().transform((val) => parseInt(val) || 0),
-    other: z.string().transform((val) => parseInt(val) || 0),
-  }),
-  pickupAddress: z.string().min(10, "Address is too short").max(200, "Address is too long"),
-  pickupDate: z.string().refine(val => {
-    const date = new Date(val);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return date >= today;
-  }, "Date must be today or in the future"),
+// Define the schema for the form
+const bookingSchema = z.object({
+  serviceType: z.enum(['regular', 'express', 'premium']),
+  shirts: z.number().min(0),
+  pants: z.number().min(0),
+  dresses: z.number().min(0),
+  suits: z.number().min(0),
+  others: z.number().min(0),
+  pickupAddress: z.string().min(1, 'Pickup address is required'),
+  pickupDate: z.string().min(1, 'Pickup date is required'),
   specialInstructions: z.string().optional(),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+type BookingValues = z.infer<typeof bookingSchema>;
+
+// Service pricing
+const PRICING = {
+  regular: { base: 10, shirt: 2, pants: 3, dress: 5, suit: 8, other: 4 },
+  express: { base: 15, shirt: 3, pants: 4, dress: 7, suit: 10, other: 5 },
+  premium: { base: 20, shirt: 4, pants: 5, dress: 8, suit: 12, other: 6 },
+};
 
 const CustomerBooking = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useFirebaseAuth();
   const navigate = useNavigate();
-  const [submitting, setSubmitting] = useState(false);
   
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<BookingValues>({
+    resolver: zodResolver(bookingSchema),
     defaultValues: {
-      serviceType: 'Regular',
-      items: {
-        shirts: 0,
-        pants: 0,
-        suits: 0,
-        dresses: 0,
-        other: 0,
-      },
+      serviceType: 'regular',
+      shirts: 0,
+      pants: 0,
+      dresses: 0,
+      suits: 0,
+      others: 0,
       pickupAddress: '',
-      pickupDate: new Date().toISOString().split('T')[0],
+      pickupDate: '',
       specialInstructions: '',
     },
   });
-  
-  const onSubmit = async (data: FormValues) => {
-    setSubmitting(true);
+
+  const watchServiceType = form.watch('serviceType');
+  const watchShirts = form.watch('shirts');
+  const watchPants = form.watch('pants');
+  const watchDresses = form.watch('dresses');
+  const watchSuits = form.watch('suits');
+  const watchOthers = form.watch('others');
+
+  // Calculate total price
+  const calculateTotal = () => {
+    const pricing = PRICING[watchServiceType];
     
-    // Check if at least one item quantity is greater than 0
-    const hasItems = Object.values(data.items).some(val => val > 0);
-    if (!hasItems) {
+    return (
+      pricing.base +
+      watchShirts * pricing.shirt +
+      watchPants * pricing.pants +
+      watchDresses * pricing.dress +
+      watchSuits * pricing.suit +
+      watchOthers * pricing.other
+    );
+  };
+
+  const total = calculateTotal();
+  
+  const onSubmit = async (data: BookingValues) => {
+    if (!user) {
       toast({
-        title: "No items selected",
-        description: "Please add at least one item to your order",
-        variant: "destructive",
+        title: 'Authentication Required',
+        description: 'Please log in to book a service.',
+        variant: 'destructive',
       });
-      setSubmitting(false);
       return;
     }
     
-    // Simulate an API call with a timeout
-    setTimeout(() => {
-      toast({
-        title: "Order Placed Successfully",
-        description: "Your laundry service has been booked",
+    setIsSubmitting(true);
+    
+    try {
+      // Map form data to order structure
+      const items = [
+        { name: 'Shirts', quantity: data.shirts, price: PRICING[data.serviceType].shirt * data.shirts },
+        { name: 'Pants', quantity: data.pants, price: PRICING[data.serviceType].pants * data.pants },
+        { name: 'Dresses', quantity: data.dresses, price: PRICING[data.serviceType].dress * data.dresses },
+        { name: 'Suits', quantity: data.suits, price: PRICING[data.serviceType].suit * data.suits },
+        { name: 'Others', quantity: data.others, price: PRICING[data.serviceType].other * data.others },
+      ].filter(item => item.quantity > 0);
+      
+      const orderId = await createOrder({
+        userId: user.id,
+        serviceType: data.serviceType,
+        items,
+        total,
+        pickupAddress: data.pickupAddress,
+        pickupDate: data.pickupDate,
+        specialInstructions: data.specialInstructions || undefined,
       });
-      setSubmitting(false);
+
+      toast({
+        title: 'Order Placed',
+        description: `Your order has been successfully placed! Order ID: ${orderId.slice(0, 8)}`,
+      });
+      
       navigate('/customer-dashboard');
-    }, 1500);
-  };
-  
-  const calculateTotal = () => {
-    const values = form.getValues();
-    const itemCounts = Object.values(values.items).reduce((sum, val) => sum + val, 0);
-    
-    let basePrice = itemCounts * 5; // Assuming $5 per item as base price
-    
-    switch (values.serviceType) {
-      case 'Premium':
-        return basePrice * 1.2; // 20% extra for premium
-      case 'Express':
-        return basePrice * 1.5; // 50% extra for express
-      default:
-        return basePrice;
+    } catch (error) {
+      console.error('Error submitting order:', error);
+      toast({
+        title: 'Error',
+        description: 'There was a problem submitting your order. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
-  
+
   return (
     <div className="animate-fade-in">
-      <h2 className="text-2xl font-bold mb-6">Book a Laundry Service</h2>
-      
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <ServiceTypeSelection control={form.control} />
-          <ItemsSelection control={form.control} />
-          <PickupDetails control={form.control} />
-          <OrderSummary total={calculateTotal()} submitting={submitting} />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-2 space-y-6">
+              <ServiceTypeSelection control={form.control} />
+              <ItemsSelection control={form.control} />
+              <PickupDetails control={form.control} />
+            </div>
+            
+            <div>
+              <OrderSummary total={total} submitting={isSubmitting} />
+            </div>
+          </div>
+          
+          {/* We don't need a submit button here as it's in OrderSummary */}
         </form>
       </Form>
     </div>

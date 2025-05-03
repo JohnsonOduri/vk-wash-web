@@ -2,13 +2,13 @@
 import { useState, useEffect } from 'react';
 import { Menu, X, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
+import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const { user } = useAuth();
+  const { user } = useFirebaseAuth();
   const navigate = useNavigate();
   
   const toggleMenu = () => {

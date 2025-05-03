@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clock, Package, User, Star, LogOut, Home } from 'lucide-react';
+import { Clock, Package, User, LogOut, Home } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { toast } from '@/hooks/use-toast';
 import CustomerOrders from '@/components/customer/CustomerOrders';
@@ -60,7 +59,7 @@ const mockOrders = [
 ];
 
 const CustomerDashboard = () => {
-  const { user, logout } = useAuth();
+  const { user, logout } = useFirebaseAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('orders');
 

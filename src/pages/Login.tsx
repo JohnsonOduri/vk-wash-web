@@ -10,10 +10,12 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useAuth } from "@/contexts/AuthContext";
+import { useFirebaseAuth } from "@/contexts/FirebaseAuthContext";
 import { toast } from "@/hooks/use-toast";
-import { Mail, Phone, User } from "lucide-react";
+import { Mail, Phone, User, Key } from "lucide-react";
 import Navigation from "@/components/Navigation";
+import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 const phoneSchema = z.object({
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
@@ -29,10 +31,11 @@ const emailSchema = z.object({
 });
 
 const Login = () => {
-  const { loginWithOTP, loginWithEmail } = useAuth();
+  const { loginWithOTP, loginWithEmail } = useFirebaseAuth();
   const navigate = useNavigate();
   const [loginStep, setLoginStep] = useState<"phone" | "otp">("phone");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [verificationId, setVerificationId] = useState("");
 
   const phoneForm = useForm<z.infer<typeof phoneSchema>>({
     resolver: zodResolver(phoneSchema),
@@ -56,13 +59,55 @@ const Login = () => {
     },
   });
 
-  const onPhoneSubmit = (data: z.infer<typeof phoneSchema>) => {
-    setPhoneNumber(data.phone);
-    setLoginStep("otp");
-    toast({
-      title: "OTP Sent",
-      description: "A 6-digit code has been sent to your phone",
-    });
+  const setupRecaptcha = () => {
+    if (!(window as any).recaptchaVerifier) {
+      (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        'size': 'invisible',
+        'callback': () => {
+          // reCAPTCHA solved, allow sending OTP
+        },
+        'expired-callback': () => {
+          // Reset reCAPTCHA
+          toast({
+            title: "reCAPTCHA Expired",
+            description: "Please try again",
+            variant: "destructive",
+          });
+        }
+      });
+    }
+  };
+
+  const onPhoneSubmit = async (data: z.infer<typeof phoneSchema>) => {
+    try {
+      setupRecaptcha();
+      setPhoneNumber(data.phone);
+      
+      const formattedPhone = data.phone.startsWith('+') 
+        ? data.phone 
+        : `+${data.phone}`;
+        
+      const confirmationResult = await signInWithPhoneNumber(
+        auth, 
+        formattedPhone, 
+        (window as any).recaptchaVerifier
+      );
+      
+      setVerificationId(confirmationResult.verificationId);
+      setLoginStep("otp");
+      
+      toast({
+        title: "OTP Sent",
+        description: "A 6-digit code has been sent to your phone",
+      });
+    } catch (error) {
+      console.error("Error sending OTP:", error);
+      toast({
+        title: "Error Sending OTP",
+        description: "Please check your phone number and try again",
+        variant: "destructive",
+      });
+    }
   };
 
   const onOtpSubmit = async (data: z.infer<typeof otpSchema>) => {
@@ -102,6 +147,7 @@ const Login = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Navigation />
+      <div id="recaptcha-container"></div>
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <Tabs defaultValue="customer" className="w-full">
@@ -225,7 +271,7 @@ const Login = () => {
                             <FormLabel>Password</FormLabel>
                             <FormControl>
                               <div className="flex items-center space-x-2">
-                                <User className="text-muted-foreground" />
+                                <Key className="text-muted-foreground" />
                                 <Input type="password" placeholder="******" {...field} />
                               </div>
                             </FormControl>

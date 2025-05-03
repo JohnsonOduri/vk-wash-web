@@ -10,14 +10,14 @@ import CustomerDashboard from "./pages/CustomerDashboard";
 import DeliveryDashboard from "./pages/DeliveryDashboard";
 import Reviews from "./pages/Reviews";
 import NotFound from "./pages/NotFound";
-import { AuthProvider } from "./contexts/AuthContext";
+import { FirebaseAuthProvider } from "./contexts/FirebaseAuthContext";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <AuthProvider>
+      <FirebaseAuthProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
@@ -30,7 +30,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
-      </AuthProvider>
+      </FirebaseAuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
