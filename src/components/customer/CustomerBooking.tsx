@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -36,7 +35,11 @@ const PRICING = {
   premium: { base: 20, shirt: 4, pants: 5, dress: 8, suit: 12, other: 6 },
 };
 
-const CustomerBooking = () => {
+interface CustomerBookingProps {
+  customerId: string;
+}
+
+const CustomerBooking: React.FC<CustomerBookingProps> = ({ customerId }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useFirebaseAuth();
   const navigate = useNavigate();

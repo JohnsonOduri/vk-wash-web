@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,9 +25,10 @@ interface Order {
 
 interface CustomerOrdersProps {
   orders: Order[];
+  customerId: string;
 }
 
-const CustomerOrders = ({ orders }: CustomerOrdersProps) => {
+const CustomerOrders = ({ orders, customerId }: CustomerOrdersProps) => {
   const navigate = useNavigate();
   const [activeOrder, setActiveOrder] = useState<string | null>(null);
 
