@@ -62,12 +62,21 @@ const Navigation = () => {
   
   // Navigation links for landing page
   const mainPageLinks = [
-    { name: 'Home', href: '#home', onClick: () => {} },
-    { name: 'Services', href: '#services', onClick: () => {} },
-    { name: 'Pricing', href: '#pricing', onClick: () => {} },
-    { name: 'About', href: '#about', onClick: () => {} },
-    { name: 'Contact', href: '#contact', onClick: () => {} }
+    { name: 'Home', href: '#home', onClick: () => scrollToSection('home') },
+    { name: 'Services', href: '#services', onClick: () => scrollToSection('services') },
+    { name: 'Pricing', href: '#pricing', onClick: () => scrollToSection('pricing') },
+    { name: 'About', href: '#about', onClick: () => scrollToSection('about') },
+    { name: 'Contact', href: '#contact', onClick: () => scrollToSection('contact') }
   ];
+  
+  // Function to scroll to sections on the main page
+  const scrollToSection = (id) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+    setIsMenuOpen(false);
+  };
   
   // Navigation links for dashboard pages and other non-landing pages
   const otherPagesLinks = [
@@ -89,7 +98,10 @@ const Navigation = () => {
       <div className="container-custom">
         <div className="flex items-center justify-between">
           <a href={isMainPage ? "#home" : "/"} className="flex items-center" onClick={(e) => {
-            if (!isMainPage) {
+            if (isMainPage) {
+              e.preventDefault();
+              scrollToSection('home');
+            } else {
               e.preventDefault();
               handleHomeClick();
             }
@@ -104,10 +116,8 @@ const Navigation = () => {
                 href={link.href} 
                 className={`font-medium ${location.pathname === link.href ? 'text-blue-600' : 'text-gray-700'} hover:text-blue transition-colors animate-fade-in`}
                 onClick={(e) => {
-                  if (!isMainPage || link.onClick) {
-                    e.preventDefault();
-                    link.onClick();
-                  }
+                  e.preventDefault();
+                  link.onClick();
                 }}
               >
                 {link.name}
@@ -149,13 +159,9 @@ const Navigation = () => {
                   href={link.href} 
                   className={`font-medium ${location.pathname === link.href ? 'text-blue-600' : 'text-gray-700'} hover:text-blue transition-colors`}
                   onClick={(e) => {
-                    if (!isMainPage || link.onClick) {
-                      e.preventDefault();
-                      link.onClick();
-                      toggleMenu();
-                    } else {
-                      toggleMenu();
-                    }
+                    e.preventDefault();
+                    link.onClick();
+                    toggleMenu();
                   }}
                 >
                   {link.name}

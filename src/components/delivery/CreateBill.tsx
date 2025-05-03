@@ -1,0 +1,321 @@
+
+import { useState, useEffect } from 'react';
+import { CheckCircle, Plus, Minus, Trash } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { toast } from '@/hooks/use-toast';
+import { LaundryItem, OrderItem } from '@/models/LaundryItem';
+import { getAllLaundryItems, createBill } from '@/services/laundryItemService';
+import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
+
+const CreateBill = ({ orderId, customerInfo }) => {
+  const { user } = useFirebaseAuth();
+  const [items, setItems] = useState<LaundryItem[]>([]);
+  const [selectedItems, setSelectedItems] = useState<OrderItem[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [customerName, setCustomerName] = useState(customerInfo?.customerName || '');
+  const [customerPhone, setCustomerPhone] = useState(customerInfo?.customerPhone || '');
+
+  // Tax rate (10%)
+  const taxRate = 0.10;
+
+  useEffect(() => {
+    loadLaundryItems();
+  }, []);
+
+  const loadLaundryItems = async () => {
+    setIsLoading(true);
+    try {
+      const fetchedItems = await getAllLaundryItems();
+      setItems(fetchedItems);
+    } catch (error) {
+      console.error('Error loading laundry items:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load laundry items',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const addItemToOrder = (item: LaundryItem) => {
+    // Check if item is already in the order
+    const existingItemIndex = selectedItems.findIndex(i => i.id === item.id);
+    
+    if (existingItemIndex >= 0) {
+      // Increment quantity if already in the order
+      const updatedItems = [...selectedItems];
+      updatedItems[existingItemIndex].quantity += 1;
+      updatedItems[existingItemIndex].total = updatedItems[existingItemIndex].price * updatedItems[existingItemIndex].quantity;
+      setSelectedItems(updatedItems);
+    } else {
+      // Add new item to the order with quantity 1
+      const newOrderItem: OrderItem = {
+        ...item,
+        quantity: 1,
+        total: item.price
+      };
+      setSelectedItems([...selectedItems, newOrderItem]);
+    }
+  };
+
+  const removeItemFromOrder = (itemId: string) => {
+    setSelectedItems(selectedItems.filter(item => item.id !== itemId));
+  };
+
+  const updateItemQuantity = (itemId: string, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      removeItemFromOrder(itemId);
+      return;
+    }
+
+    const updatedItems = selectedItems.map(item => {
+      if (item.id === itemId) {
+        return {
+          ...item,
+          quantity: newQuantity,
+          total: item.price * newQuantity
+        };
+      }
+      return item;
+    });
+    setSelectedItems(updatedItems);
+  };
+
+  const calculateSubtotal = () => {
+    return selectedItems.reduce((sum, item) => sum + item.total, 0);
+  };
+
+  const calculateTax = () => {
+    return calculateSubtotal() * taxRate;
+  };
+
+  const calculateTotal = () => {
+    return calculateSubtotal() + calculateTax();
+  };
+
+  const handleGenerateBill = async () => {
+    if (!customerName || !customerPhone) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please provide customer name and phone number',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (selectedItems.length === 0) {
+      toast({
+        title: 'Empty Bill',
+        description: 'Please add at least one item to the bill',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      const billData = {
+        customerId: customerInfo?.customerId || 'unknown',
+        customerName,
+        customerPhone,
+        items: selectedItems,
+        subtotal: calculateSubtotal(),
+        tax: calculateTax(),
+        total: calculateTotal()
+      };
+
+      await createBill(billData);
+      toast({
+        title: 'Success',
+        description: 'Bill has been generated and sent to the customer'
+      });
+      // Reset form
+      setSelectedItems([]);
+    } catch (error) {
+      console.error('Error creating bill:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to generate bill',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const filteredItems = items.filter(item => 
+    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.category.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold">Create Bill</h2>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Customer Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="customerName" className="text-right">
+                  Name
+                </Label>
+                <Input
+                  id="customerName"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="col-span-3"
+                  placeholder="Customer Name"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="customerPhone" className="text-right">
+                  Phone
+                </Label>
+                <Input
+                  id="customerPhone"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  className="col-span-3"
+                  placeholder="Customer Phone"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Select Items</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Input
+                placeholder="Search items..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              
+              {isLoading ? (
+                <div className="flex justify-center my-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : (
+                <div className="max-h-80 overflow-y-auto space-y-2">
+                  {filteredItems.length > 0 ? (
+                    filteredItems.map(item => (
+                      <div 
+                        key={item.id} 
+                        className="flex justify-between items-center p-3 rounded-md border hover:bg-gray-50 cursor-pointer"
+                        onClick={() => addItemToOrder(item)}
+                      >
+                        <div>
+                          <div className="font-medium">{item.name}</div>
+                          <div className="text-sm text-gray-500">{item.category}</div>
+                        </div>
+                        <div className="font-semibold">₹{item.price.toFixed(2)}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-muted-foreground">
+                      {searchQuery ? 'No items match your search' : 'No items available'}
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Bill Summary</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {selectedItems.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    {selectedItems.map(item => (
+                      <div key={item.id} className="flex items-center justify-between py-2 border-b">
+                        <div className="flex-1">
+                          <div className="font-medium">{item.name}</div>
+                          <div className="text-sm text-gray-500">₹{item.price.toFixed(2)} each</div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-8 w-8"
+                            onClick={() => updateItemQuantity(item.id, item.quantity - 1)}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                          <span className="w-8 text-center">{item.quantity}</span>
+                          <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-8 w-8"
+                            onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-red-500"
+                            onClick={() => removeItemFromOrder(item.id)}
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="w-24 text-right font-medium">
+                          ₹{item.total.toFixed(2)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="pt-4 space-y-2">
+                    <div className="flex justify-between">
+                      <span>Subtotal</span>
+                      <span>₹{calculateSubtotal().toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Tax (10%)</span>
+                      <span>₹{calculateTax().toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-lg pt-2 border-t">
+                      <span>Total</span>
+                      <span>₹{calculateTotal().toFixed(2)}</span>
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    className="w-full mt-4" 
+                    onClick={handleGenerateBill}
+                    disabled={selectedItems.length === 0}
+                  >
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Generate Bill
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No items added to bill yet</p>
+                  <p className="text-sm mt-2">Click on items from the left panel to add them</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CreateBill;
