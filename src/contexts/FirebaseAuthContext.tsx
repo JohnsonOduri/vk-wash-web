@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { 
   createUserWithEmailAndPassword, 
@@ -88,6 +87,11 @@ export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Utility function to remove undefined fields from an object
+  const cleanObject = (obj: Record<string, any>): Record<string, any> => {
+    return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== undefined));
+  };
+
   const loginWithGoogle = async (): Promise<boolean> => {
     setIsLoading(true);
     try {
@@ -95,18 +99,24 @@ export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
       const userCredential = await signInWithPopup(auth, provider);
       const firebaseUser = userCredential.user;
       
+      if (!firebaseUser) {
+        throw new Error("User is not authenticated");
+      }
+
       // Check if user document exists
       const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
       
       if (!userDoc.exists()) {
         // Create new user document if it doesn't exist
         const uniqueId = generateUniqueId(firebaseUser.email || firebaseUser.uid);
-        await setDoc(doc(db, "users", firebaseUser.uid), {
+        const userData = cleanObject({
           email: firebaseUser.email,
           name: firebaseUser.displayName,
           role: "customer",
           uniqueId
         });
+        console.log("Writing user data to Firestore:", userData);
+        await setDoc(doc(db, "users", firebaseUser.uid), userData);
       }
       
       setIsLoading(false);
@@ -124,16 +134,22 @@ export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
       
+      if (!firebaseUser) {
+        throw new Error("User is not authenticated");
+      }
+
       // Get user data from Firestore
       const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
       
       if (!userDoc.exists()) {
         // Create user document if it doesn't exist
-        await setDoc(doc(db, "users", firebaseUser.uid), {
+        const userData = cleanObject({
           email,
           role: "delivery", // Default role for email login
           name: "Delivery Staff" // Default name
         });
+        console.log("Writing user data to Firestore:", userData);
+        await setDoc(doc(db, "users", firebaseUser.uid), userData);
       }
       
       setIsLoading(false);
@@ -151,12 +167,18 @@ export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
       
+      if (!firebaseUser) {
+        throw new Error("User is not authenticated");
+      }
+
       // Create user document in Firestore
-      await setDoc(doc(db, "users", firebaseUser.uid), {
+      const userData = cleanObject({
         email,
         role,
         name: role === "delivery" ? "Delivery Staff" : undefined
       });
+      console.log("Writing user data to Firestore:", userData);
+      await setDoc(doc(db, "users", firebaseUser.uid), userData);
       
       setIsLoading(false);
       return true;

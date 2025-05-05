@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -37,19 +36,40 @@ const Login = () => {
     
     if (isRegistering) {
       // Register new customer
-      success = await registerWithEmail(data.email, data.password, "customer");
-      if (success) {
-        toast({
-          title: "Registration Successful",
-          description: "Welcome to VK Wash! You can now login.",
-        });
-        setIsRegistering(false); // Switch back to login view
-      } else {
-        toast({
-          title: "Registration Failed",
-          description: "Failed to register. Please try again.",
-          variant: "destructive",
-        });
+      try {
+        success = await registerWithEmail(data.email, data.password, "customer");
+        if (success) {
+          toast({
+            title: "Registration Successful",
+            description: "Welcome to VK Wash! You can now login.",
+          });
+          setIsRegistering(false); // Switch back to login view
+        }
+      } catch (error: any) {
+        if (error.code === "auth/email-already-in-use") {
+          // Try to sign in instead
+          success = await loginWithEmail(data.email, data.password);
+          if (success) {
+            toast({
+              title: "Login Successful",
+              description: "Welcome back to VK Wash!",
+            });
+            navigate("/customer-dashboard");
+          } else {
+            toast({
+              title: "Login Failed",
+              description: "Invalid credentials, please try again.",
+              variant: "destructive",
+            });
+          }
+        } else {
+          console.error("Registration failed:", error.message);
+          toast({
+            title: "Registration Failed",
+            description: "Failed to register. Please try again.",
+            variant: "destructive",
+          });
+        }
       }
     } else {
       // Login existing customer
