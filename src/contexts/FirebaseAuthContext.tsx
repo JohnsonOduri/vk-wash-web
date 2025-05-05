@@ -5,8 +5,8 @@ import {
   signInWithEmailAndPassword,
   signOut, 
   onAuthStateChanged,
-  PhoneAuthProvider,
-  signInWithCredential,
+  GoogleAuthProvider,
+  signInWithPopup,
   User as FirebaseUser
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
@@ -26,11 +26,11 @@ interface User {
 interface FirebaseAuthContextType {
   user: User | null;
   isLoading: boolean;
-  loginWithOTP: (phone: string, otp: string) => Promise<boolean>;
+  loginWithGoogle: () => Promise<boolean>;
   loginWithEmail: (email: string, password: string) => Promise<boolean>;
   registerWithEmail: (email: string, password: string, role: UserRole) => Promise<boolean>;
   logout: () => void;
-  generateUniqueId: (phone: string) => string;
+  generateUniqueId: (identifier: string) => string;
 }
 
 const FirebaseAuthContext = createContext<FirebaseAuthContextType | undefined>(undefined);
@@ -58,6 +58,7 @@ export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
             id: firebaseUser.uid,
             email: firebaseUser.email || undefined,
             phone: firebaseUser.phoneNumber || undefined,
+            name: firebaseUser.displayName || undefined,
             role: "customer", // Default role
           });
         }
@@ -70,56 +71,48 @@ export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubscribe();
   }, []);
 
-  // Generate a 5-digit unique ID based on phone number
-  const generateUniqueId = (phone: string): string => {
+  // Generate a 5-digit unique ID based on identifier (email or phone)
+  const generateUniqueId = (identifier: string): string => {
     // Take last 5 digits of phone number or hash if not enough digits
-    const digits = phone.replace(/\D/g, '');
+    const digits = identifier.replace(/\D/g, '');
     if (digits.length >= 5) {
       return digits.slice(-5);
     } else {
-      // Simple hash function for short phone numbers
+      // Simple hash function for short identifiers
       let hash = 0;
-      for (let i = 0; i < phone.length; i++) {
-        hash = ((hash << 5) - hash) + phone.charCodeAt(i);
+      for (let i = 0; i < identifier.length; i++) {
+        hash = ((hash << 5) - hash) + identifier.charCodeAt(i);
         hash |= 0; // Convert to 32bit integer
       }
       return Math.abs(hash % 100000).toString().padStart(5, '0');
     }
   };
 
-  const loginWithOTP = async (phone: string, otp: string): Promise<boolean> => {
+  const loginWithGoogle = async (): Promise<boolean> => {
     setIsLoading(true);
     try {
-      // In a real implementation, you would verify the OTP with Firebase
-      // This is a simplified example
-      if (otp.length === 6) {
-        // For demo purposes only - in a real app you would use Firebase phone auth
-        const uniqueId = generateUniqueId(phone);
-        const newUser = {
-          phone,
-          role: "customer" as UserRole,
+      const provider = new GoogleAuthProvider();
+      const userCredential = await signInWithPopup(auth, provider);
+      const firebaseUser = userCredential.user;
+      
+      // Check if user document exists
+      const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
+      
+      if (!userDoc.exists()) {
+        // Create new user document if it doesn't exist
+        const uniqueId = generateUniqueId(firebaseUser.email || firebaseUser.uid);
+        await setDoc(doc(db, "users", firebaseUser.uid), {
+          email: firebaseUser.email,
+          name: firebaseUser.displayName,
+          role: "customer",
           uniqueId
-        };
-        
-        // Create/update user document in Firestore
-        // Note: In a real implementation, this would happen after successful phone authentication
-        await setDoc(doc(db, "users", "phone_" + phone.replace(/\D/g, '')), {
-          ...newUser
-        }, { merge: true });
-        
-        // Set local user state
-        setUser({
-          id: "phone_" + phone.replace(/\D/g, ''),
-          ...newUser
         });
-        
-        setIsLoading(false);
-        return true;
       }
+      
       setIsLoading(false);
-      return false;
+      return true;
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("Google login error:", error);
       setIsLoading(false);
       return false;
     }
@@ -186,7 +179,7 @@ export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
   const value = {
     user,
     isLoading,
-    loginWithOTP,
+    loginWithGoogle,
     loginWithEmail,
     registerWithEmail,
     logout,

@@ -6,24 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFirebaseAuth } from "@/contexts/FirebaseAuthContext";
 import { toast } from "@/hooks/use-toast";
-import { Mail, Phone, User, Key } from "lucide-react";
+import { Mail, User, Key } from "lucide-react";
 import Navigation from "@/components/Navigation";
-import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
-import { auth } from "@/lib/firebase";
-
-const phoneSchema = z.object({
-  phone: z.string().min(10, "Phone number must be at least 10 digits"),
-});
-
-const otpSchema = z.object({
-  otp: z.string().length(6, "OTP must be 6 characters"),
-});
 
 const emailSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -31,26 +20,9 @@ const emailSchema = z.object({
 });
 
 const Login = () => {
-  const { loginWithOTP, loginWithEmail } = useFirebaseAuth();
+  const { loginWithGoogle, loginWithEmail } = useFirebaseAuth();
   const navigate = useNavigate();
-  const [loginStep, setLoginStep] = useState<"phone" | "otp">("phone");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [verificationId, setVerificationId] = useState("");
-
-  const phoneForm = useForm<z.infer<typeof phoneSchema>>({
-    resolver: zodResolver(phoneSchema),
-    defaultValues: {
-      phone: "",
-    },
-  });
-
-  const otpForm = useForm<z.infer<typeof otpSchema>>({
-    resolver: zodResolver(otpSchema),
-    defaultValues: {
-      otp: "",
-    },
-  });
-
+  
   const emailForm = useForm<z.infer<typeof emailSchema>>({
     resolver: zodResolver(emailSchema),
     defaultValues: {
@@ -59,59 +31,8 @@ const Login = () => {
     },
   });
 
-  const setupRecaptcha = () => {
-    if (!(window as any).recaptchaVerifier) {
-      (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        'size': 'invisible',
-        'callback': () => {
-          // reCAPTCHA solved, allow sending OTP
-        },
-        'expired-callback': () => {
-          // Reset reCAPTCHA
-          toast({
-            title: "reCAPTCHA Expired",
-            description: "Please try again",
-            variant: "destructive",
-          });
-        }
-      });
-    }
-  };
-
-  const onPhoneSubmit = async (data: z.infer<typeof phoneSchema>) => {
-    try {
-      setupRecaptcha();
-      setPhoneNumber(data.phone);
-      
-      const formattedPhone = data.phone.startsWith('+') 
-        ? data.phone 
-        : `+${data.phone}`;
-        
-      const confirmationResult = await signInWithPhoneNumber(
-        auth, 
-        formattedPhone, 
-        (window as any).recaptchaVerifier
-      );
-      
-      setVerificationId(confirmationResult.verificationId);
-      setLoginStep("otp");
-      
-      toast({
-        title: "OTP Sent",
-        description: "A 6-digit code has been sent to your phone",
-      });
-    } catch (error) {
-      console.error("Error sending OTP:", error);
-      toast({
-        title: "Error Sending OTP",
-        description: "Please check your phone number and try again",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const onOtpSubmit = async (data: z.infer<typeof otpSchema>) => {
-    const success = await loginWithOTP(phoneNumber, data.otp);
+  const handleGoogleLogin = async () => {
+    const success = await loginWithGoogle();
     if (success) {
       toast({
         title: "Login Successful",
@@ -121,7 +42,7 @@ const Login = () => {
     } else {
       toast({
         title: "Login Failed",
-        description: "Invalid OTP, please try again",
+        description: "Failed to login with Google. Please try again.",
         variant: "destructive",
       });
     }
@@ -147,7 +68,6 @@ const Login = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Navigation />
-      <div id="recaptcha-container"></div>
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <Tabs defaultValue="customer" className="w-full">
@@ -161,77 +81,22 @@ const Login = () => {
                 <CardHeader>
                   <CardTitle>Customer Login</CardTitle>
                   <CardDescription>
-                    {loginStep === "phone" 
-                      ? "Enter your phone number to receive an OTP" 
-                      : "Enter the 6-digit code sent to your phone"}
+                    Sign in with your Google account
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  {loginStep === "phone" ? (
-                    <Form {...phoneForm}>
-                      <form onSubmit={phoneForm.handleSubmit(onPhoneSubmit)} className="space-y-6">
-                        <FormField
-                          control={phoneForm.control}
-                          name="phone"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Phone Number</FormLabel>
-                              <FormControl>
-                                <div className="flex items-center space-x-2">
-                                  <Phone className="text-muted-foreground" />
-                                  <Input placeholder="Enter your phone number" {...field} />
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <Button type="submit" className="w-full">
-                          Get OTP
-                        </Button>
-                      </form>
-                    </Form>
-                  ) : (
-                    <Form {...otpForm}>
-                      <form onSubmit={otpForm.handleSubmit(onOtpSubmit)} className="space-y-6">
-                        <FormField
-                          control={otpForm.control}
-                          name="otp"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>One-Time Password</FormLabel>
-                              <FormControl>
-                                <InputOTP maxLength={6} {...field}>
-                                  <InputOTPGroup>
-                                    <InputOTPSlot index={0} />
-                                    <InputOTPSlot index={1} />
-                                    <InputOTPSlot index={2} />
-                                    <InputOTPSlot index={3} />
-                                    <InputOTPSlot index={4} />
-                                    <InputOTPSlot index={5} />
-                                  </InputOTPGroup>
-                                </InputOTP>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <div className="flex flex-col space-y-2">
-                          <Button type="submit" className="w-full">
-                            Verify OTP
-                          </Button>
-                          <Button 
-                            type="button" 
-                            variant="outline" 
-                            onClick={() => setLoginStep("phone")}
-                            className="w-full"
-                          >
-                            Back to Phone Entry
-                          </Button>
-                        </div>
-                      </form>
-                    </Form>
-                  )}
+                <CardContent className="flex flex-col items-center">
+                  <Button 
+                    className="w-full mb-4 flex items-center" 
+                    onClick={handleGoogleLogin}
+                  >
+                    <svg viewBox="0 0 24 24" className="h-5 w-5 mr-2" aria-hidden="true">
+                      <path
+                        fill="currentColor"
+                        d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
+                      />
+                    </svg>
+                    Sign in with Google
+                  </Button>
                 </CardContent>
               </Card>
             </TabsContent>

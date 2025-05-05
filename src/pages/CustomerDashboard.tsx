@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate, Routes, Route } from 'react-router-dom';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
@@ -70,15 +71,15 @@ const CustomerDashboard = () => {
           </TabsList>
           
           <TabsContent value="orders">
-            <CustomerOrders customerId={user?.id} orders={[]} />
+            <CustomerOrders customerId={user?.id || ''} orders={[]} />
           </TabsContent>
           
           <TabsContent value="booking">
-            <CustomerBooking customerId={user?.id} />
+            <CustomerBooking customerId={user?.id || ''} />
           </TabsContent>
           
           <TabsContent value="bills">
-            <BillViewer customerId={user?.id} />
+            <BillViewer customerId={user?.id || ''} />
           </TabsContent>
           
           <TabsContent value="profile">

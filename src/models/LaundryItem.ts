@@ -7,9 +7,10 @@ export interface LaundryItem {
   createdAt: Date;
 }
 
-export interface OrderItem extends LaundryItem {
+export interface BillItem {
+  name: string;
   quantity: number;
-  total: number;
+  price: number;
 }
 
 export interface Bill {
@@ -18,11 +19,11 @@ export interface Bill {
   customerName: string;
   customerPhone: string;
   date: Date;
-  items: OrderItem[];
+  items: BillItem[];
   subtotal: number;
   tax: number;
   total: number;
   status: 'pending' | 'paid';
-  paymentMethod?: 'cash' | 'google_pay' | 'internet_banking' | 'phone_pay' | 'paytm';
+  paymentMethod?: string;
   paymentDate?: Date;
 }
