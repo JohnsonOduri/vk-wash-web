@@ -71,7 +71,7 @@ const CustomerDashboard = () => {
           </TabsList>
           
           <TabsContent value="orders">
-            <CustomerOrders customerId={user?.id || ''} orders={[]} />
+            <CustomerOrders customerId={user?.id || ''} />
           </TabsContent>
           
           <TabsContent value="booking">

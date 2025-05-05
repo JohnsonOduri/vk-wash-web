@@ -12,12 +12,16 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { LaundryItem, Bill } from '@/models/LaundryItem';
+import { LaundryItem, Bill, OrderItem } from '@/models/LaundryItem';
 
-export const createLaundryItem = async (itemData: Omit<LaundryItem, 'id' | 'createdAt'>): Promise<string> => {
+export const createLaundryItem = async (itemData: Partial<LaundryItem>): Promise<string> => {
   const itemWithTimestamp = {
     ...itemData,
-    createdAt: serverTimestamp()
+    createdAt: serverTimestamp(),
+    status: itemData.status || 'pending',
+    quantity: itemData.quantity || 1,
+    customerId: itemData.customerId || '',
+    updatedAt: serverTimestamp()
   };
 
   const docRef = await addDoc(collection(db, 'laundryItems'), itemWithTimestamp);
@@ -35,7 +39,11 @@ export const getAllLaundryItems = async (): Promise<LaundryItem[]> => {
       name: data.name,
       price: data.price,
       category: data.category,
-      createdAt: data.createdAt.toDate()
+      createdAt: data.createdAt?.toDate() || new Date(),
+      status: data.status || 'pending',
+      quantity: data.quantity || 1, 
+      customerId: data.customerId || '',
+      updatedAt: data.updatedAt?.toDate() || new Date()
     } as LaundryItem);
   });
   
@@ -53,17 +61,22 @@ export const getLaundryItemById = async (itemId: string): Promise<LaundryItem | 
       name: data.name,
       price: data.price,
       category: data.category,
-      createdAt: data.createdAt.toDate()
+      createdAt: data.createdAt?.toDate() || new Date(),
+      status: data.status || 'pending',
+      quantity: data.quantity || 1,
+      customerId: data.customerId || '',
+      updatedAt: data.updatedAt?.toDate() || new Date()
     } as LaundryItem;
   }
   
   return null;
 };
 
-export const createBill = async (billData: Omit<Bill, 'id' | 'date' | 'status'>): Promise<string> => {
+export const createBill = async (billData: Omit<Bill, 'id' | 'status'>): Promise<string> => {
   const billWithDetails = {
     ...billData,
-    date: serverTimestamp(),
+    createdAt: serverTimestamp(),
+    date: serverTimestamp(), // Adding for backwards compatibility
     status: 'pending'
   };
 
@@ -83,7 +96,8 @@ export const getBillsByCustomerId = async (customerId: string): Promise<Bill[]> 
       customerId: data.customerId,
       customerName: data.customerName,
       customerPhone: data.customerPhone,
-      date: data.date.toDate(),
+      date: data.date?.toDate(),
+      createdAt: data.createdAt?.toDate() || data.date?.toDate() || new Date(),
       items: data.items,
       subtotal: data.subtotal,
       tax: data.tax,
@@ -108,7 +122,8 @@ export const getBillById = async (billId: string): Promise<Bill | null> => {
       customerId: data.customerId,
       customerName: data.customerName,
       customerPhone: data.customerPhone,
-      date: data.date.toDate(),
+      date: data.date?.toDate(),
+      createdAt: data.createdAt?.toDate() || data.date?.toDate() || new Date(),
       items: data.items,
       subtotal: data.subtotal,
       tax: data.tax,

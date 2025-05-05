@@ -1,9 +1,13 @@
 
-// Add the OrderItem interface which was missing
+// Define all interfaces in a consistent way that matches their usage in the app
+
 export interface OrderItem {
+  id: string;
   name: string;
   quantity: number;
   price: number;
+  total: number;
+  category?: string;
 }
 
 export interface LaundryItem {
@@ -14,6 +18,8 @@ export interface LaundryItem {
   customerId: string;
   createdAt: Date;
   updatedAt: Date;
+  price: number;
+  category: string;
 }
 
 export interface BillItem {
@@ -21,12 +27,14 @@ export interface BillItem {
   name: string;
   price: number;
   quantity: number;
-  total: number; // Added the total property
+  total: number;
 }
 
 export interface Bill {
   id: string;
   customerId: string;
+  customerName?: string;
+  customerPhone?: string;
   items: BillItem[];
   subtotal: number;
   tax: number;
@@ -34,6 +42,8 @@ export interface Bill {
   status: 'pending' | 'paid';
   createdAt: Date;
   paymentMethod?: string;
+  paymentDate?: Date;
+  date?: Date; // Added for compatibility with existing code
   orderId?: string;
 }
 

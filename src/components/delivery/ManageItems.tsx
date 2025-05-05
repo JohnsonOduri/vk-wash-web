@@ -54,6 +54,7 @@ const ManageItems = () => {
     }
 
     try {
+      // Only pass what we have, the service will handle the rest
       await createLaundryItem(newItem);
       setIsAddDialogOpen(false);
       toast({
@@ -82,7 +83,7 @@ const ManageItems = () => {
 
   const filteredItems = items.filter(item => 
     item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.category.toLowerCase().includes(searchQuery.toLowerCase())
+    item.category?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const categoryOptions = [
