@@ -126,7 +126,8 @@ const CreateBill = ({ orderId, customerInfo }) => {
         items: selectedItems,
         subtotal: calculateSubtotal(),
         tax: calculateTax(),
-        total: calculateTotal()
+        total: calculateTotal(),
+        orderId: orderId  // Include order ID if available
       };
 
       await createBill(billData);

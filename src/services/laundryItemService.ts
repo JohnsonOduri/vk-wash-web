@@ -1,4 +1,3 @@
-
 import { 
   collection, 
   addDoc, 
@@ -72,7 +71,7 @@ export const getLaundryItemById = async (itemId: string): Promise<LaundryItem | 
   return null;
 };
 
-export const createBill = async (billData: Omit<Bill, 'id' | 'status'>): Promise<string> => {
+export const createBill = async (billData: Omit<Bill, 'id' | 'status' | 'createdAt'>): Promise<string> => {
   const billWithDetails = {
     ...billData,
     createdAt: serverTimestamp(),
