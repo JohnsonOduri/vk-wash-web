@@ -9,6 +9,8 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from '@/hooks/use-toast';
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from '@/lib/firebase';
 
 interface CustomerProfileProps {
   user: {
@@ -17,7 +19,8 @@ interface CustomerProfileProps {
     uniqueId?: string;
     name?: string;
     address?: string;
-  };
+    email?: string;
+  } | null;
 }
 
 const profileSchema = z.object({
@@ -34,22 +37,43 @@ const CustomerProfile = ({ user }: CustomerProfileProps) => {
   const form = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      name: user.name || "",
-      phone: user.phone || "",
-      address: user.address || "",
+      name: user?.name || "",
+      phone: user?.phone || "",
+      address: user?.address || "",
     },
   });
 
   const onSubmit = async (data: ProfileValues) => {
-    // In a real app, this would call an API to update the user profile
-    // For demo, we'll just simulate a successful update
-    setTimeout(() => {
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "User information not available",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Update user profile in Firestore
+      await updateDoc(doc(db, "users", user.id), {
+        name: data.name,
+        phone: data.phone,
+        address: data.address,
+      });
+
       toast({
         title: "Profile Updated",
         description: "Your profile has been successfully updated",
       });
       setEditing(false);
-    }, 1000);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast({
+        title: "Update Failed",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -140,7 +164,7 @@ const CustomerProfile = ({ user }: CustomerProfileProps) => {
                 <User className="text-blue h-5 w-5 mt-1" />
                 <div>
                   <div className="text-sm font-medium text-gray-500">Name</div>
-                  <div className="text-lg">{user.name || "Not set"}</div>
+                  <div className="text-lg">{user?.name || "Not set"}</div>
                 </div>
               </div>
               
@@ -148,7 +172,7 @@ const CustomerProfile = ({ user }: CustomerProfileProps) => {
                 <Phone className="text-blue h-5 w-5 mt-1" />
                 <div>
                   <div className="text-sm font-medium text-gray-500">Phone Number</div>
-                  <div className="text-lg">{user.phone || "Not set"}</div>
+                  <div className="text-lg">{user?.phone || "Not set"}</div>
                 </div>
               </div>
               
@@ -156,7 +180,15 @@ const CustomerProfile = ({ user }: CustomerProfileProps) => {
                 <MapPin className="text-blue h-5 w-5 mt-1" />
                 <div>
                   <div className="text-sm font-medium text-gray-500">Address</div>
-                  <div className="text-lg">{user.address || "Not set"}</div>
+                  <div className="text-lg">{user?.address || "Not set"}</div>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-4 py-2">
+                <Mail className="text-blue h-5 w-5 mt-1" />
+                <div>
+                  <div className="text-sm font-medium text-gray-500">Email</div>
+                  <div className="text-lg">{user?.email || "Not set"}</div>
                 </div>
               </div>
             </div>
@@ -177,7 +209,7 @@ const CustomerProfile = ({ user }: CustomerProfileProps) => {
               </div>
               <div>
                 <div className="text-sm font-medium text-gray-500">Customer ID</div>
-                <div className="text-lg font-mono">{user.uniqueId}</div>
+                <div className="text-lg font-mono">{user?.phone || user?.uniqueId}</div>
                 <div className="text-sm text-gray-500 mt-1">
                   Use this ID when communicating with customer service
                 </div>

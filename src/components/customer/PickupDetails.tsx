@@ -3,12 +3,24 @@ import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/comp
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Control } from 'react-hook-form';
+import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
+import { useEffect } from 'react';
 
 interface PickupDetailsProps {
   control: Control<any>;
+  setValue: any;
 }
 
-const PickupDetails = ({ control }: PickupDetailsProps) => {
+const PickupDetails = ({ control, setValue }: PickupDetailsProps) => {
+  const { user } = useFirebaseAuth();
+
+  // Pre-fill the address with the user's saved address
+  useEffect(() => {
+    if (user?.address) {
+      setValue('pickupAddress', user.address);
+    }
+  }, [user, setValue]);
+
   return (
     <Card>
       <CardHeader>

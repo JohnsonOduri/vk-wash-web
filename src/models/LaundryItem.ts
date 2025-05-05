@@ -1,36 +1,40 @@
 
-export interface LaundryItem {
-  id: string;
-  name: string;
-  price: number;
-  category: string;
-  createdAt: Date;
-}
-
-export interface BillItem {
+// Add the OrderItem interface which was missing
+export interface OrderItem {
   name: string;
   quantity: number;
   price: number;
-  total: number;
+}
+
+export interface LaundryItem {
+  id: string;
+  name: string;
+  quantity: number;
+  status: 'pending' | 'processing' | 'completed';
+  customerId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface BillItem {
+  id?: string;
+  name: string;
+  price: number;
+  quantity: number;
+  total: number; // Added the total property
 }
 
 export interface Bill {
   id: string;
   customerId: string;
-  customerName: string;
-  customerPhone: string;
-  date: Date;
   items: BillItem[];
   subtotal: number;
   tax: number;
   total: number;
   status: 'pending' | 'paid';
+  createdAt: Date;
   paymentMethod?: string;
-  paymentDate?: Date;
+  orderId?: string;
 }
 
-// Adding OrderItem interface that was missing
-export interface OrderItem extends LaundryItem {
-  quantity: number;
-  total: number;
-}
+export type LaundryItemStatus = 'pending' | 'processing' | 'completed';

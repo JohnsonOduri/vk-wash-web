@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { 
   createUserWithEmailAndPassword, 
@@ -20,6 +21,13 @@ interface User {
   name?: string;
   role: UserRole;
   uniqueId?: string;
+  address?: string;
+}
+
+interface UserRegisterData {
+  name?: string;
+  phone?: string;
+  address?: string;
 }
 
 interface FirebaseAuthContextType {
@@ -27,7 +35,7 @@ interface FirebaseAuthContextType {
   isLoading: boolean;
   loginWithGoogle: () => Promise<boolean>;
   loginWithEmail: (email: string, password: string) => Promise<boolean>;
-  registerWithEmail: (email: string, password: string, role: UserRole) => Promise<boolean>;
+  registerWithEmail: (email: string, password: string, role: UserRole, userData?: UserRegisterData) => Promise<boolean>;
   logout: () => void;
   generateUniqueId: (identifier: string) => string;
 }
@@ -145,8 +153,7 @@ export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
         // Create user document if it doesn't exist
         const userData = cleanObject({
           email,
-          role: "delivery", // Default role for email login
-          name: "Delivery Staff" // Default name
+          role: "customer", // Default role
         });
         console.log("Writing user data to Firestore:", userData);
         await setDoc(doc(db, "users", firebaseUser.uid), userData);
@@ -161,7 +168,12 @@ export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  const registerWithEmail = async (email: string, password: string, role: UserRole): Promise<boolean> => {
+  const registerWithEmail = async (
+    email: string, 
+    password: string, 
+    role: UserRole,
+    userData?: UserRegisterData
+  ): Promise<boolean> => {
     setIsLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -171,14 +183,23 @@ export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error("User is not authenticated");
       }
 
+      // Generate uniqueId from phone if available, otherwise from email
+      const uniqueId = userData?.phone 
+        ? generateUniqueId(userData.phone)
+        : generateUniqueId(email);
+
       // Create user document in Firestore
-      const userData = cleanObject({
+      const firestoreData = cleanObject({
         email,
         role,
-        name: role === "delivery" ? "Delivery Staff" : undefined
+        name: userData?.name,
+        phone: userData?.phone,
+        address: userData?.address,
+        uniqueId
       });
-      console.log("Writing user data to Firestore:", userData);
-      await setDoc(doc(db, "users", firebaseUser.uid), userData);
+      
+      console.log("Writing user data to Firestore:", firestoreData);
+      await setDoc(doc(db, "users", firebaseUser.uid), firestoreData);
       
       setIsLoading(false);
       return true;

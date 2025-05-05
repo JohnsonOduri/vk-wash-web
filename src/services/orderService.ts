@@ -29,8 +29,8 @@ export interface Order {
   pickupAddress: string;
   pickupDate: string;
   specialInstructions?: string;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: Timestamp | Date;
+  updatedAt: Timestamp | Date;
   deliveryPersonId?: string;
 }
 

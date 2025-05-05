@@ -3,69 +3,62 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Star, ArrowRight, Clock, Package, MapPin, User, CheckCircle, Receipt, CreditCard } from 'lucide-react';
+import { Star, Clock, Package, User, Receipt, CreditCard } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { getBillsByCustomerId } from '@/services/laundryItemService';
 import { Bill } from '@/models/LaundryItem';
 import { toast } from '@/hooks/use-toast';
-
-interface DeliveryPerson {
-  name: string;
-  id: string;
-  image: string;
-}
-
-interface Order {
-  id: string;
-  service: string;
-  status: string;
-  createdAt: Date;
-  deliveredAt?: Date;
-  items: string[];
-  total: number;
-  progress: number;
-  deliveryPerson: DeliveryPerson;
-  billId?: string;
-}
+import { getOrdersByUser, Order } from '@/services/orderService';
 
 interface CustomerOrdersProps {
   customerId: string;
-  orders: Order[];
 }
 
-const CustomerOrders = ({ orders = [], customerId }: CustomerOrdersProps) => {
+const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
   const navigate = useNavigate();
   const [activeOrder, setActiveOrder] = useState<string | null>(null);
   const [viewingBill, setViewingBill] = useState<Bill | null>(null);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [customerBills, setCustomerBills] = useState<Bill[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchBills = async () => {
+    const fetchData = async () => {
       if (customerId) {
+        setIsLoading(true);
         try {
+          const fetchedOrders = await getOrdersByUser(customerId);
+          setOrders(fetchedOrders);
+          
           const bills = await getBillsByCustomerId(customerId);
           setCustomerBills(bills);
         } catch (error) {
-          console.error("Error fetching bills:", error);
+          console.error("Error fetching data:", error);
+          toast({
+            title: "Error",
+            description: "Could not load your orders. Please try again later.",
+            variant: "destructive"
+          });
         } finally {
           setIsLoading(false);
         }
       }
     };
 
-    fetchBills();
+    fetchData();
   }, [customerId]);
 
   // Sort orders by date (newest first)
-  const sortedOrders = [...orders].sort((a, b) => 
-    b.createdAt.getTime() - a.createdAt.getTime()
-  );
+  const sortedOrders = [...orders].sort((a, b) => {
+    const dateA = a.createdAt instanceof Date ? a.createdAt : a.createdAt.toDate();
+    const dateB = b.createdAt instanceof Date ? b.createdAt : b.createdAt.toDate();
+    return dateB.getTime() - dateA.getTime();
+  });
   
-  const currentOrders = sortedOrders.filter(order => order.status !== 'Delivered');
-  const pastOrders = sortedOrders.filter(order => order.status === 'Delivered');
+  const currentOrders = sortedOrders.filter(order => order.status !== 'delivered');
+  const pastOrders = sortedOrders.filter(order => order.status === 'delivered');
 
   const handleRateDelivery = (orderId: string) => {
     navigate('/reviews', { state: { orderId } });
@@ -106,45 +99,48 @@ const CustomerOrders = ({ orders = [], customerId }: CustomerOrdersProps) => {
   
   const getStatusColor = (status: string) => {
     switch(status) {
-      case 'Booked': return 'text-amber-500';
-      case 'Picked': return 'text-blue-500';
-      case 'Working': return 'text-purple-500';
-      case 'Delivered': return 'text-green-500';
+      case 'pending': return 'text-amber-500';
+      case 'picked': return 'text-blue-500';
+      case 'processing': return 'text-purple-500';
+      case 'delivered': return 'text-green-500';
       default: return 'text-gray-500';
+    }
+  };
+  
+  const getStatusDisplay = (status: string) => {
+    switch(status) {
+      case 'pending': return 'Booked';
+      case 'picked': return 'Picked Up';
+      case 'processing': return 'Processing';
+      case 'delivered': return 'Delivered';
+      default: return status.charAt(0).toUpperCase() + status.slice(1);
     }
   };
   
   const getProgressValue = (status: string) => {
     switch(status) {
-      case 'Booked': return 10;
-      case 'Picked': return 40;
-      case 'Working': return 75;
-      case 'Delivered': return 100;
+      case 'pending': return 10;
+      case 'picked': return 40;
+      case 'processing': return 75;
+      case 'delivered': return 100;
       default: return 0;
     }
   };
   
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
+  const formatDate = (date: Date | any) => {
+    if (!date) return 'N/A';
+    const d = date instanceof Date ? date : date.toDate();
+    return d.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
     });
   };
 
-  // Find bill for a specific order
-  const getBillForOrder = (orderId: string) => {
-    const order = [...currentOrders, ...pastOrders].find(o => o.id === orderId);
-    if (order?.billId) {
-      return customerBills.find(bill => bill.id === order.billId);
-    }
-    return null;
-  };
-
   const renderOrderCard = (order: Order, showRateButton: boolean = false) => {
-    // Check if this order has a bill
-    const hasBill = customerBills.some(bill => bill.id === order.billId);
-    const orderBill = getBillForOrder(order.id);
+    // Find bill matching this order (if any)
+    const orderBill = customerBills.find(bill => bill.orderId === order.id);
+    const hasBill = !!orderBill;
     
     return (
       <Card key={order.id} className="mb-4 overflow-hidden transition-all duration-200 hover:shadow-md">
@@ -153,14 +149,14 @@ const CustomerOrders = ({ orders = [], customerId }: CustomerOrdersProps) => {
             <div>
               <CardTitle className="text-lg flex items-center">
                 <Package className="h-5 w-5 mr-2 text-blue" />
-                {order.service} Service
+                {order.serviceType.charAt(0).toUpperCase() + order.serviceType.slice(1)} Service
               </CardTitle>
               <CardDescription>
-                Order #{order.id} • {formatDate(order.createdAt)}
+                Order #{order.id?.slice(0, 8)} • {formatDate(order.createdAt)}
               </CardDescription>
             </div>
             <div className={`text-sm font-medium ${getStatusColor(order.status)}`}>
-              {order.status}
+              {getStatusDisplay(order.status)}
             </div>
           </div>
         </CardHeader>
@@ -172,8 +168,8 @@ const CustomerOrders = ({ orders = [], customerId }: CustomerOrdersProps) => {
             
             <div className="flex justify-between mt-2 text-xs text-gray-500">
               <span>Booked</span>
-              <span>Picked</span>
-              <span>Working</span>
+              <span>Picked Up</span>
+              <span>Processing</span>
               <span>Delivered</span>
             </div>
           </div>
@@ -198,41 +194,49 @@ const CustomerOrders = ({ orders = [], customerId }: CustomerOrdersProps) => {
           {activeOrder === order.id && (
             <div className="mt-4 space-y-3 animate-fade-in">
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className="flex items-start">
-                  <Clock className="h-4 w-4 mr-2 text-gray-500 mt-0.5" />
-                  <div>
-                    <div className="font-medium">Estimated Delivery</div>
-                    <div className="text-gray-500">
-                      {order.status === 'Delivered' 
-                        ? `Delivered on ${formatDate(order.deliveredAt || new Date())}` 
-                        : '1-2 days'}
-                    </div>
+                <div>
+                  <div className="font-medium">Service Type</div>
+                  <div className="text-gray-500">
+                    {order.serviceType.charAt(0).toUpperCase() + order.serviceType.slice(1)}
                   </div>
                 </div>
                 
-                <div className="flex items-start">
-                  <User className="h-4 w-4 mr-2 text-gray-500 mt-0.5" />
-                  <div>
-                    <div className="font-medium">Delivery Person</div>
-                    <div className="text-gray-500">
-                      {order.deliveryPerson.name} (ID: {order.deliveryPerson.id})
-                    </div>
+                <div>
+                  <div className="font-medium">Pickup Date</div>
+                  <div className="text-gray-500">
+                    {order.pickupDate}
                   </div>
                 </div>
               </div>
+              
+              <div>
+                <div className="font-medium">Pickup Address</div>
+                <div className="text-gray-500">
+                  {order.pickupAddress}
+                </div>
+              </div>
+              
+              {order.specialInstructions && (
+                <div>
+                  <div className="font-medium">Special Instructions</div>
+                  <div className="text-gray-500">
+                    {order.specialInstructions}
+                  </div>
+                </div>
+              )}
               
               <div className="border-t pt-3">
                 <div className="font-medium mb-1">Items</div>
                 <ul className="list-disc list-inside text-sm text-gray-600">
                   {order.items.map((item, idx) => (
-                    <li key={idx}>{item}</li>
+                    <li key={idx}>{item.name} x {item.quantity} (₹{item.price.toFixed(2)})</li>
                   ))}
                 </ul>
               </div>
               
               <div className="border-t pt-3 flex justify-between items-center">
                 <div className="font-medium">Total:</div>
-                <div className="text-lg font-bold">${order.total.toFixed(2)}</div>
+                <div className="text-lg font-bold">₹{order.total.toFixed(2)}</div>
               </div>
             </div>
           )}
@@ -242,25 +246,36 @@ const CustomerOrders = ({ orders = [], customerId }: CustomerOrdersProps) => {
           <Button
             variant="ghost" 
             size="sm" 
-            onClick={() => toggleOrderDetails(order.id)}
+            onClick={() => toggleOrderDetails(order.id || '')}
           >
             {activeOrder === order.id ? 'Hide Details' : 'View Details'}
           </Button>
           
-          {showRateButton && order.status === 'Delivered' && (
+          {showRateButton && order.status === 'delivered' && (
             <Button 
               size="sm" 
-              onClick={() => handleRateDelivery(order.id)}
+              onClick={() => handleRateDelivery(order.id || '')}
               className="bg-blue hover:bg-blue-dark"
             >
               <Star className="h-4 w-4 mr-2" />
-              Rate Delivery
+              Rate Service
             </Button>
           )}
         </CardFooter>
       </Card>
     );
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue mx-auto"></div>
+          <p className="mt-4 text-gray-500">Loading your orders...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -286,7 +301,7 @@ const CustomerOrders = ({ orders = [], customerId }: CustomerOrdersProps) => {
             <p className="text-gray-500 text-center mb-4">
               You haven't placed any orders yet. Start by booking a service!
             </p>
-            <Button onClick={() => navigate('/customer-dashboard/book')}>
+            <Button onClick={() => navigate('/customer-dashboard')}>
               Book Service
             </Button>
           </CardContent>
@@ -312,7 +327,7 @@ const CustomerOrders = ({ orders = [], customerId }: CustomerOrdersProps) => {
                   {viewingBill.items.map((item, index) => (
                     <li key={index} className="flex justify-between text-sm">
                       <span>{item.name} x {item.quantity}</span>
-                      <span>${item.price.toFixed(2)}</span>
+                      <span>₹{item.price.toFixed(2)}</span>
                     </li>
                   ))}
                 </ul>
@@ -321,15 +336,15 @@ const CustomerOrders = ({ orders = [], customerId }: CustomerOrdersProps) => {
               <div className="border-t pt-2 space-y-1">
                 <div className="flex justify-between text-sm">
                   <span>Subtotal</span>
-                  <span>${viewingBill.subtotal.toFixed(2)}</span>
+                  <span>₹{viewingBill.subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Tax</span>
-                  <span>${viewingBill.tax.toFixed(2)}</span>
+                  <span>₹{viewingBill.tax.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between font-bold mt-2">
                   <span>Total</span>
-                  <span>${viewingBill.total.toFixed(2)}</span>
+                  <span>₹{viewingBill.total.toFixed(2)}</span>
                 </div>
               </div>
               
