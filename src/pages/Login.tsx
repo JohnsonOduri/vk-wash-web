@@ -201,7 +201,7 @@ const Login = () => {
                               <FormControl>
                                 <div className="flex items-center space-x-2">
                                   <Mail className="text-muted-foreground" />
-                                  <Input placeholder="youremail@example.com" {...field} />
+                                  <Input placeholder="youremail@example.com" className="cant write the email" />
                                 </div>
                               </FormControl>
                               <FormMessage />
