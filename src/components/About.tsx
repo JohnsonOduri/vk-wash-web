@@ -19,18 +19,28 @@ const About = () => {
           <div className="lg:w-1/2">
             <h3 className="text-2xl font-bold mb-4">Our Story</h3>
             <p className="text-gray-600 mb-4">
-              Founded in 2018, VK Wash began with a simple mission: to provide busy professionals with high-quality laundry services that save time without compromising on quality. What started as a small operation has grown into a trusted name in the community.
+            VK Wash Laundry & Dry Cleaning Services has been delivering quality laundry care in Vattinagulapally, Gandipet, Hyderabad since <b>1992</b>. We offer reliable, citywide laundry, dry cleaning, and steam ironing services.
             </p>
             <p className="text-gray-600 mb-4">
-              We take pride in our attention to detail, environmentally conscious practices, and exceptional customer service. Every garment that passes through our facility receives the utmost care and attention.
+              Founded by <b>Mr. Vijay Kumar Oduri</b>, VK Wash was inspired by his father, <b>Mr. Veeraraju Oduri</b>. Driven by passion and hard work, Mr. Vijay built the business from scratch. Today, he is supported by his wife<b> Mrs. Mani Oduri</b> and son  <b>Mr. Johnson Oduri</b>, who manages tech operations, keeping the service modern and efficient.
             </p>
             <p className="text-gray-600 mb-4">
-              Our team of experienced professionals is committed to delivering spotless, neatly pressed clothing with every order. We understand that your garments are important to you, which is why we handle them as if they were our own.
+            We serve <b>students, professionals, families, and corporates </b>with pickup & delivery, affordable pricing, and fast turnaround—making laundry hassle-free.
+
+            </p>
+            <p>
+              <b>Our Mission</b><br></br>
+            We clean, iron, and deliver—so you don’t have to.<br>
+            </br>
+
+Our happy customers have shared glowing reviews on Google, and their trust is our biggest reward.
+
+
             </p>
             
             <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center">
-                <div className="text-3xl font-bold text-blue">5+</div>
+                <div className="text-3xl font-bold text-blue">30+</div>
                 <div className="text-sm text-gray-600">Years of Experience</div>
               </div>
               <div className="text-center">

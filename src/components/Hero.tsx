@@ -1,6 +1,16 @@
 import { Button } from '@/components/ui/button';
+
 const Hero = () => {
-  return <section id="home" className="relative min-h-screen flex items-center justify-center pt-16">
+  const handleGetStarted = () => {
+    window.location.href = '/login';
+  };
+
+  const handleViewServices = () => {
+    document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  return (
+    <section id="home" className="relative min-h-screen flex items-center justify-center pt-16">
       <div className="absolute inset-0 bg-gradient-to-b from-gray-100 to-white z-0"></div>
       <div className="container-custom relative z-10">
         <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-16">
@@ -13,8 +23,10 @@ const Hero = () => {
               Premium laundry services tailored to fit your busy lifestyle. We clean, iron, and deliver – so you don't have to.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <Button className="btn-primary text-base px-8 py-6">Get Started</Button>
-              <Button variant="outline" className="text-base px-8 py-6">
+              <Button className="btn-primary text-base px-8 py-6" onClick={handleGetStarted}>
+                Get Started
+              </Button>
+              <Button variant="outline" className="text-base px-8 py-6" onClick={handleViewServices}>
                 View Services
               </Button>
             </div>
@@ -31,11 +43,11 @@ const Hero = () => {
         
         <div className="mt-16 lg:mt-24 grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
           {[{
-          count: '5+',
+          count: '30+',
           label: 'Years Experience'
         }, {
-          count: '1000+',
-          label: 'Happy Customers'
+          count: '2500+',
+          label: 'Happy Customers and counting'
         }, {
           count: '24h',
           label: 'Fast Turnaround'
@@ -48,6 +60,8 @@ const Hero = () => {
             </div>)}
         </div>
       </div>
-    </section>;
+    </section>
+  );
 };
+
 export default Hero;

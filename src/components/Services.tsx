@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const servicesData = [
@@ -12,7 +11,7 @@ const servicesData = [
       'Gentle Fabric Care',
       'Eco-Friendly Products'
     ],
-    icon: '🧺'
+    image: 'src/components/pictures/washing.jpg',
   },
   {
     title: 'Ironing',
@@ -24,7 +23,7 @@ const servicesData = [
       'Special Fabric Handling',
       'Business Attire Specialty'
     ],
-    icon: '👔'
+    image: 'src/components/pictures/ironing.jpg',
   },
   {
     title: 'Dry Cleaning',
@@ -36,7 +35,7 @@ const servicesData = [
       'Suits & Formal Wear',
       'Organic Solvents Available'
     ],
-    icon: '✨'
+    image: 'src/components/pictures/dryCleaning.jpg',
   }
 ];
 
@@ -51,24 +50,30 @@ const Services = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {servicesData.map((service, index) => (
-            <Card key={index} className="border border-gray-200 card-hover">
-              <CardHeader>
-                <div className="text-4xl mb-4">{service.icon}</div>
-                <CardTitle className="text-2xl font-bold">{service.title}</CardTitle>
-                <CardDescription className="text-base text-gray-600">
-                  {service.description}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  {service.features.map((feature, i) => (
-                    <li key={i} className="flex items-start">
-                      <span className="text-blue mr-2">✓</span>
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
+            <Card
+              key={index}
+              className="relative border-none overflow-hidden rounded-lg shadow-lg"
+              style={{ backgroundImage: `url(${service.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+            >
+              <div className="absolute inset-0 bg-black bg-opacity-50"></div>
+              <div className="relative z-10 p-6 text-white">
+                <CardHeader>
+                  <CardTitle className="text-2xl font-bold">{service.title}</CardTitle>
+                  <CardDescription className="text-base text-white">
+                    {service.description}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2">
+                    {service.features.map((feature, i) => (
+                      <li key={i} className="flex items-start">
+                        <span className="text-blue-300 mr-2">✓</span>
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </div>
             </Card>
           ))}
         </div>

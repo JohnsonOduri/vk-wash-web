@@ -8,7 +8,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div>
             <img 
-              src="/lovable-uploads/198fd8c7-14bf-4b95-bca5-dce17b20b362.png" 
+              src="src/components/pictures/VK logo.png" 
               alt="VK Wash Logo" 
               className="h-12 mb-4 invert opacity-90"
             />
@@ -59,26 +59,26 @@ const Footer = () => {
           <div>
             <h4 className="text-lg font-bold mb-4">Contact</h4>
             <address className="not-italic text-gray-400 space-y-2">
-              <p>123 Laundry Street</p>
-              <p>Clean City, CC 12345</p>
-              <p>Phone: (123) 456-7890</p>
-              <p>Email: info@vkwash.com</p>
+              <p>Vattinagulapally, Gandipet </p>
+              <p>Hyderabad , 500075</p>
+              <p>Phone: +91 8106549413</p>
+              <p>Email: vkwashexpress@gmail.com</p>
             </address>
             
             <div className="mt-6">
-              <div className="flex space-x-4">
-                {['facebook', 'instagram', 'twitter'].map(social => (
-                  <a 
-                    key={social}
-                    href={`https://${social}.com`}
-                    target="_blank"
-                    rel="noopener noreferrer" 
-                    className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 hover:bg-blue hover:text-white transition-colors"
-                  >
-                    {social[0].toUpperCase()}
-                  </a>
-                ))}
-              </div>
+            <div className="flex space-x-4">
+                  {['Whatsapp'].map(social => (
+                    <a 
+                      key={social}
+                      href={`https://wa.me/918106549413`}
+                      target="_blank"
+                      rel="noopener noreferrer" 
+
+                    >
+                     
+                    </a>
+                  ))}
+                </div>
             </div>
           </div>
         </div>

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,24 +21,12 @@ const Contact = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    
-    // Simulate form submission
-    setTimeout(() => {
-      toast({
-        title: "Message sent!",
-        description: "We'll get back to you as soon as possible.",
-      });
-      
-      setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        message: ''
-      });
-      
-      setIsSubmitting(false);
-    }, 1500);
+
+    const { name, email, phone, message } = formData;
+    const whatsappMessage = `Hello, my name is ${name} Email: ${email} Phone: ${phone} Message: ${message}`;
+    const whatsappUrl = `https://wa.me/918106549413?text=${whatsappMessage}`;
+
+    window.location.href = whatsappUrl;
   };
 
   return (
@@ -59,16 +46,17 @@ const Contact = () => {
                 <div>
                   <h4 className="font-bold mb-2">Our Location</h4>
                   <p className="text-gray-600">
-                    123 Laundry Street<br />
-                    Clean City, CC 12345
+                    Vattinagulapally, Gandipet<br />
+                    Hyderabad, 500075, Telangana, India
+                    
                   </p>
                 </div>
                 
                 <div>
                   <h4 className="font-bold mb-2">Contact Information</h4>
                   <p className="text-gray-600">
-                    Email: info@vkwash.com<br />
-                    Phone: (123) 456-7890
+                    Email: vkwashexpress@gmail.com<br />
+                    Phone: +91 81065 49413<br />
                   </p>
                 </div>
                 
@@ -76,24 +64,28 @@ const Contact = () => {
                   <h4 className="font-bold mb-2">Business Hours</h4>
                   <p className="text-gray-600">
                     Monday - Friday: 8:00 AM - 8:00 PM<br />
-                    Saturday: 9:00 AM - 6:00 PM<br />
-                    Sunday: 10:00 AM - 4:00 PM
+                    Saturday and Sunday : 9:00 AM - 6:00 PM<br />
+                    
                   </p>
                 </div>
               </div>
               
               <div className="mt-8">
-                <h4 className="font-bold mb-4">Follow Us</h4>
+                <h4 className="font-bold mb-4">Get Connected</h4>
                 <div className="flex space-x-4">
-                  {['facebook', 'instagram', 'twitter'].map(social => (
+                  {['Whatsapp'].map(social => (
                     <a 
                       key={social}
-                      href={`https://${social}.com`}
+                      href={`https://wa.me/918106549413`}
                       target="_blank"
                       rel="noopener noreferrer" 
                       className="w-10 h-10 rounded-full bg-blue bg-opacity-10 flex items-center justify-center text-blue hover:bg-opacity-20 transition-colors"
                     >
-                      {social[0].toUpperCase()}
+                      <img 
+                        src="src/components/pictures/Whatsapp.jpg" 
+                        alt="WhatsApp" 
+                        className="w-6 h-6"
+                      />
                     </a>
                   ))}
                 </div>
