@@ -11,6 +11,7 @@ export interface BillItem {
   name: string;
   quantity: number;
   price: number;
+  total: number;
 }
 
 export interface Bill {
@@ -26,4 +27,10 @@ export interface Bill {
   status: 'pending' | 'paid';
   paymentMethod?: string;
   paymentDate?: Date;
+}
+
+// Adding OrderItem interface that was missing
+export interface OrderItem extends LaundryItem {
+  quantity: number;
+  total: number;
 }
