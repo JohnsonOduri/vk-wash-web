@@ -189,7 +189,7 @@ const Login = () => {
                               <FormControl>
                                 <div className="flex items-center space-x-2">
                                   <User className="text-muted-foreground" />
-                                  <Input placeholder="Your full name" className="i cant seem to enter name and email in the corresponding fields" />
+                                  <Input placeholder="Your full name" {...field} />
                                 </div>
                               </FormControl>
                               <FormMessage />
@@ -201,7 +201,7 @@ const Login = () => {
                               <FormControl>
                                 <div className="flex items-center space-x-2">
                                   <Mail className="text-muted-foreground" />
-                                  <Input placeholder="youremail@example.com" className="cant write the email" />
+                                  <Input placeholder="youremail@example.com" {...field} />
                                 </div>
                               </FormControl>
                               <FormMessage />
