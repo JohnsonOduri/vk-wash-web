@@ -20,8 +20,9 @@ const emailSchema = z.object({
 });
 
 const Login = () => {
-  const { loginWithGoogle, loginWithEmail } = useFirebaseAuth();
+  const { loginWithEmail, registerWithEmail } = useFirebaseAuth();
   const navigate = useNavigate();
+  const [isRegistering, setIsRegistering] = useState(false);
   
   const emailForm = useForm<z.infer<typeof emailSchema>>({
     resolver: zodResolver(emailSchema),
@@ -31,24 +32,45 @@ const Login = () => {
     },
   });
 
-  const handleGoogleLogin = async () => {
-    const success = await loginWithGoogle();
-    if (success) {
-      toast({
-        title: "Login Successful",
-        description: "Welcome to VK Wash",
-      });
-      navigate("/customer-dashboard");
+  const onCustomerSubmit = async (data: z.infer<typeof emailSchema>) => {
+    let success;
+    
+    if (isRegistering) {
+      // Register new customer
+      success = await registerWithEmail(data.email, data.password, "customer");
+      if (success) {
+        toast({
+          title: "Registration Successful",
+          description: "Welcome to VK Wash! You can now login.",
+        });
+        setIsRegistering(false); // Switch back to login view
+      } else {
+        toast({
+          title: "Registration Failed",
+          description: "Failed to register. Please try again.",
+          variant: "destructive",
+        });
+      }
     } else {
-      toast({
-        title: "Login Failed",
-        description: "Failed to login with Google. Please try again.",
-        variant: "destructive",
-      });
+      // Login existing customer
+      success = await loginWithEmail(data.email, data.password);
+      if (success) {
+        toast({
+          title: "Login Successful",
+          description: "Welcome to VK Wash",
+        });
+        navigate("/customer-dashboard");
+      } else {
+        toast({
+          title: "Login Failed",
+          description: "Invalid credentials, please try again",
+          variant: "destructive",
+        });
+      }
     }
   };
 
-  const onEmailSubmit = async (data: z.infer<typeof emailSchema>) => {
+  const onStaffSubmit = async (data: z.infer<typeof emailSchema>) => {
     const success = await loginWithEmail(data.email, data.password);
     if (success) {
       toast({
@@ -79,24 +101,65 @@ const Login = () => {
             <TabsContent value="customer">
               <Card>
                 <CardHeader>
-                  <CardTitle>Customer Login</CardTitle>
+                  <CardTitle>{isRegistering ? "Customer Registration" : "Customer Login"}</CardTitle>
                   <CardDescription>
-                    Sign in with your Google account
+                    {isRegistering 
+                      ? "Create a new customer account" 
+                      : "Sign in with your email and password"}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-col items-center">
-                  <Button 
-                    className="w-full mb-4 flex items-center" 
-                    onClick={handleGoogleLogin}
-                  >
-                    <svg viewBox="0 0 24 24" className="h-5 w-5 mr-2" aria-hidden="true">
-                      <path
-                        fill="currentColor"
-                        d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
+                <CardContent>
+                  <Form {...emailForm}>
+                    <form onSubmit={emailForm.handleSubmit(onCustomerSubmit)} className="space-y-4">
+                      <FormField
+                        control={emailForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <div className="flex items-center space-x-2">
+                                <Mail className="text-muted-foreground" />
+                                <Input placeholder="youremail@example.com" {...field} />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </svg>
-                    Sign in with Google
-                  </Button>
+                      <FormField
+                        control={emailForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <div className="flex items-center space-x-2">
+                                <Key className="text-muted-foreground" />
+                                <Input type="password" placeholder="******" {...field} />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button type="submit" className="w-full">
+                        {isRegistering ? "Register" : "Log in"}
+                      </Button>
+                      <div className="text-center mt-4">
+                        <button 
+                          type="button"
+                          className="text-sm text-blue-600 hover:underline"
+                          onClick={() => {
+                            setIsRegistering(!isRegistering);
+                            emailForm.reset();
+                          }}
+                        >
+                          {isRegistering ? "Already have an account? Login" : "New customer? Register here"}
+                        </button>
+                      </div>
+                    </form>
+                  </Form>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -111,7 +174,7 @@ const Login = () => {
                 </CardHeader>
                 <CardContent>
                   <Form {...emailForm}>
-                    <form onSubmit={emailForm.handleSubmit(onEmailSubmit)} className="space-y-4">
+                    <form onSubmit={emailForm.handleSubmit(onStaffSubmit)} className="space-y-4">
                       <FormField
                         control={emailForm.control}
                         name="email"

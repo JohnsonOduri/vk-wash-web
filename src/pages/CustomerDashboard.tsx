@@ -43,7 +43,7 @@ const CustomerDashboard = () => {
               <img src="/lovable-uploads/f6071df1-f9c6-4598-90f2-6eb900efc9aa.png" alt="VK Wash Logo" className="h-8" />
               <div>
                 <h1 className="text-lg font-bold">Customer Dashboard</h1>
-                <p className="text-sm text-gray-500">{user?.phone || user?.email}</p>
+                <p className="text-sm text-gray-500">{user?.email}</p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
