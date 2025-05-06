@@ -1,8 +1,7 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeliveryLoginForm } from "./DeliveryLoginForm";
 
-export const DeliveryAuthCard = () => {
+export const DeliveryAuthCard = ({ onLogin }: { onLogin: () => void }) => {
   return (
     <Card>
       <CardHeader>
@@ -12,7 +11,7 @@ export const DeliveryAuthCard = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <DeliveryLoginForm />
+        <DeliveryLoginForm onSubmit={onLogin} />
       </CardContent>
     </Card>
   );

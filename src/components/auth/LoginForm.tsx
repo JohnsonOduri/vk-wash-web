@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Key } from "lucide-react";
@@ -20,9 +19,10 @@ type LoginValues = z.infer<typeof loginSchema>;
 
 interface LoginFormProps {
   onToggleForm: () => void;
+  onSubmit: () => void;
 }
 
-export const LoginForm = ({ onToggleForm }: LoginFormProps) => {
+export const LoginForm = ({ onToggleForm, onSubmit }: LoginFormProps) => {
   const { loginWithEmail } = useFirebaseAuth();
   const navigate = useNavigate();
   const [loginError, setLoginError] = useState("");
@@ -35,41 +35,14 @@ export const LoginForm = ({ onToggleForm }: LoginFormProps) => {
     }
   });
 
-  const onSubmit = async (data: LoginValues) => {
-    setLoginError("");
-    try {
-      const success = await loginWithEmail(data.email, data.password);
-      if (success) {
-        toast({
-          title: "Login Successful",
-          description: "Welcome to VK Wash"
-        });
-        navigate("/customer-dashboard");
-      } else {
-        setLoginError("Invalid credentials or account not found. New user? Please sign up.");
-        toast({
-          title: "Login Failed",
-          description: "Invalid credentials or account not found",
-          variant: "destructive"
-        });
-      }
-    } catch (error: any) {
-      if (error.code === "auth/user-not-found") {
-        setLoginError("Account not found. New user? Please sign up.");
-      } else {
-        setLoginError("Invalid credentials or account not found. New user? Please sign up.");
-      }
-      toast({
-        title: "Login Failed",
-        description: error.message || "Something went wrong",
-        variant: "destructive"
-      });
-    }
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    onSubmit();
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <FormField 
           control={form.control} 
           name="email" 

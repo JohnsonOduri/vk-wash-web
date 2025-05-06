@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { Mail, Key } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -17,7 +16,7 @@ const deliveryLoginSchema = z.object({
 
 type DeliveryLoginValues = z.infer<typeof deliveryLoginSchema>;
 
-export const DeliveryLoginForm = () => {
+export const DeliveryLoginForm = ({ onSubmit }: { onSubmit: () => void }) => {
   const { loginWithEmail, user } = useFirebaseAuth();
   const navigate = useNavigate();
   
@@ -29,7 +28,12 @@ export const DeliveryLoginForm = () => {
     }
   });
 
-  const onSubmit = async (data: DeliveryLoginValues) => {
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    onSubmit();
+  };
+
+  const onSubmitForm = async (data: DeliveryLoginValues) => {
     try {
       const success = await loginWithEmail(data.email, data.password);
       if (success) {
@@ -65,7 +69,7 @@ export const DeliveryLoginForm = () => {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmitForm)} className="space-y-4">
         <FormField 
           control={form.control} 
           name="email" 

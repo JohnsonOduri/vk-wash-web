@@ -1,10 +1,9 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoginForm } from "./LoginForm";
 import { RegisterForm } from "./RegisterForm";
 
-export const CustomerAuthCard = () => {
+export const CustomerAuthCard = ({ onLogin }: { onLogin: () => void }) => {
   const [isRegistering, setIsRegistering] = useState(false);
 
   const toggleForm = () => {
@@ -24,7 +23,7 @@ export const CustomerAuthCard = () => {
       <CardContent>
         {isRegistering 
           ? <RegisterForm onToggleForm={toggleForm} /> 
-          : <LoginForm onToggleForm={toggleForm} />}
+          : <LoginForm onToggleForm={toggleForm} onSubmit={onLogin} />}
       </CardContent>
     </Card>
   );

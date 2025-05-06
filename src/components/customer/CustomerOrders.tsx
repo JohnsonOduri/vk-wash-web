@@ -301,9 +301,7 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
             <p className="text-gray-500 text-center mb-4">
               You haven't placed any orders yet. Start by booking a service!
             </p>
-            <Button onClick={() => navigate('/customer-dashboard')}>
-              Book Service
-            </Button>
+            
           </CardContent>
         </Card>
       )}
