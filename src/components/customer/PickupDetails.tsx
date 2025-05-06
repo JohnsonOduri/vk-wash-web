@@ -2,16 +2,17 @@
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Control } from 'react-hook-form';
+import { Control, FieldErrors } from 'react-hook-form';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { useEffect } from 'react';
 
 interface PickupDetailsProps {
   control: Control<any>;
   setValue: any;
+  errors?: FieldErrors;
 }
 
-const PickupDetails = ({ control, setValue }: PickupDetailsProps) => {
+const PickupDetails = ({ control, setValue, errors }: PickupDetailsProps) => {
   const { user } = useFirebaseAuth();
 
   // Pre-fill the address with the user's saved address
