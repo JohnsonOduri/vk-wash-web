@@ -13,10 +13,12 @@ import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { createOrder } from '@/services/orderService';
 import { useNavigate } from 'react-router-dom';
 
-// Define the schema for the form
+// Define the schema for the form with validation
 const bookingSchema = z.object({
-  serviceType: z.enum(['regular', 'express', 'premium']),
-  pickupAddress: z.string().min(1, 'Pickup address is required'),
+  serviceType: z.enum(['Regular', 'Express', 'Premium'], {
+    required_error: "Please select a service type",
+  }),
+  pickupAddress: z.string().min(5, 'Address must be at least 5 characters'),
   pickupDate: z.string().min(1, 'Pickup date is required'),
   specialInstructions: z.string().optional(),
 });
@@ -25,9 +27,9 @@ type BookingValues = z.infer<typeof bookingSchema>;
 
 // Service pricing
 const PRICING = {
-  regular: { base: 100 },
-  express: { base: 150 },
-  premium: { base: 200 },
+  Regular: { base: 100 },
+  Express: { base: 150 },
+  Premium: { base: 200 },
 };
 
 interface CustomerBookingProps {
@@ -42,7 +44,7 @@ const CustomerBooking: React.FC<CustomerBookingProps> = ({ customerId }) => {
   const form = useForm<BookingValues>({
     resolver: zodResolver(bookingSchema),
     defaultValues: {
-      serviceType: 'regular',
+      serviceType: 'Regular',
       pickupAddress: '',
       pickupDate: '',
       specialInstructions: '',
@@ -73,7 +75,7 @@ const CustomerBooking: React.FC<CustomerBookingProps> = ({ customerId }) => {
     try {
       // Create a simplified items array
       const items = [
-        { name: 'Laundry Service', quantity: 1, price: total }
+        { name: `${data.serviceType} Laundry Service`, quantity: 1, price: total }
       ];
       
       const orderId = await createOrder({
@@ -91,6 +93,7 @@ const CustomerBooking: React.FC<CustomerBookingProps> = ({ customerId }) => {
         description: `Your ${data.serviceType} service has been booked for ${data.pickupDate}!`,
       });
       
+      // Navigate to orders tab
       navigate('/customer-dashboard');
     } catch (error) {
       console.error('Error submitting order:', error);
@@ -111,11 +114,19 @@ const CustomerBooking: React.FC<CustomerBookingProps> = ({ customerId }) => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-2 space-y-6">
               <ServiceTypeSelection control={form.control} />
-              <PickupDetails control={form.control} setValue={form.setValue} />
+              <PickupDetails 
+                control={form.control} 
+                setValue={form.setValue} 
+                errors={form.formState.errors}
+              />
             </div>
             
             <div>
-              <OrderSummary total={total} submitting={isSubmitting} />
+              <OrderSummary 
+                total={total} 
+                submitting={isSubmitting} 
+                formErrors={Object.keys(form.formState.errors).length > 0}
+              />
             </div>
           </div>
         </form>

@@ -1,80 +1,153 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-const servicesData = [
-  {
-    title: 'Washing',
-    description: 'Our premium washing service uses eco-friendly detergents and advanced machines to care for all fabric types.',
-    features: [
-      'Whites & Colors Separation',
-      'Temperature-Controlled Washing',
-      'Special Stain Treatment',
-      'Gentle Fabric Care',
-      'Eco-Friendly Products'
-    ],
-    image: 'src/components/pictures/washing.jpg',
-  },
-  {
-    title: 'Ironing',
-    description: 'Professional ironing service that removes wrinkles and gives your garments that crisp, fresh look.',
-    features: [
-      'Professional Equipment',
-      'Steam Treatment',
-      'Folding & Hanging Options',
-      'Special Fabric Handling',
-      'Business Attire Specialty'
-    ],
-    image: 'src/components/pictures/ironing.jpg',
-  },
-  {
-    title: 'Dry Cleaning',
-    description: 'Specialized dry cleaning for delicate items and fabrics that cannot withstand traditional washing.',
-    features: [
-      'Delicate Fabric Care',
-      'Stain Removal',
-      'Wedding Dress Cleaning',
-      'Suits & Formal Wear',
-      'Organic Solvents Available'
-    ],
-    image: 'src/components/pictures/dryCleaning.jpg',
+import { motion } from "framer-motion";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter,
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+
+// Import images
+import basicWash from "./pictures/basic-wash.jpg";
+import premiumWash from "./pictures/premium-wash.jpg";
+import expressServices from "./pictures/express-services.jpg";
+import dryCleaning from "./pictures/dryCleaning.jpg";
+import ironing from "./pictures/ironing.jpg";
+import washing from "./pictures/washing.jpg";
+
+const floatAnimation = {
+  initial: { y: 0 },
+  animate: { 
+    y: [-10, 10, -10],
+    transition: {
+      repeat: Infinity,
+      duration: 6,
+      ease: "easeInOut"
+    }
   }
-];
+};
+
+const pulseAnimation = {
+  initial: { scale: 1 },
+  animate: { 
+    scale: [1, 1.05, 1],
+    transition: {
+      repeat: Infinity,
+      duration: 4,
+      ease: "easeInOut"
+    }
+  }
+};
+
+const fadeInAnimation = {
+  initial: { opacity: 0, y: 20 },
+  animate: { 
+    opacity: 1, 
+    y: 0,
+    transition: {
+      duration: 0.6
+    }
+  }
+};
 
 const Services = () => {
+  const services = [
+    {
+      title: "Basic Wash",
+      description: "Our standard washing service",
+      image: basicWash,
+      alt: "Basic Wash",
+      animation: floatAnimation,
+    },
+    {
+      title: "Premium Wash",
+      description: "Premium treatment for your clothes",
+      image: premiumWash,
+      alt: "Premium Wash",
+      animation: pulseAnimation,
+    },
+    {
+      title: "Express Services",
+      description: "Quick turnaround for urgent needs",
+      image: expressServices,
+      alt: "Express Services",
+      animation: floatAnimation,
+    },
+    {
+      title: "Dry Cleaning",
+      description: "Professional dry cleaning",
+      image: dryCleaning,
+      alt: "Dry Cleaning",
+      animation: pulseAnimation,
+    },
+    {
+      title: "Ironing",
+      description: "Professional ironing services",
+      image: ironing,
+      alt: "Ironing",
+      animation: floatAnimation,
+    },
+    {
+      title: "Washing",
+      description: "Quality washing for all fabrics",
+      image: washing,
+      alt: "Washing",
+      animation: pulseAnimation,
+    },
+  ];
+
   return (
-    <section id="services" className="section-padding bg-gray-50">
+    <section id="services" className="bg-gray-50 py-20">
       <div className="container-custom">
-        <h2 className="section-title">Our Services</h2>
-        <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
-          We offer a comprehensive range of laundry services to meet all your needs, from everyday washing to specialized care for your most delicate items.
-        </p>
+        <motion.div 
+          initial="initial" 
+          whileInView="animate" 
+          viewport={{ once: true }}
+          variants={fadeInAnimation}
+          className="text-center mb-12"
+        >
+          <h2 className="text-3xl font-bold mb-4">Our Services</h2>
+          <p className="text-gray-600 max-w-2xl mx-auto">
+            VK Wash offers a wide range of laundry services to meet your needs.
+            From basic washing to premium care for your delicate fabrics.
+          </p>
+        </motion.div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {servicesData.map((service, index) => (
-            <Card
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {services.map((service, index) => (
+            <motion.div
               key={index}
-              className="relative border-none overflow-hidden rounded-lg shadow-lg"
-              style={{ backgroundImage: `url(${service.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+              initial="initial"
+              whileInView="animate"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={service.animation}
+              className="h-full"
             >
-              <div className="absolute inset-0 bg-black bg-opacity-50"></div>
-              <div className="relative z-10 p-6 text-white">
+              <Card className="overflow-hidden h-full transition-all duration-300 hover:shadow-lg">
+                <div className="w-full h-48 overflow-hidden">
+                  <img
+                    src={service.image}
+                    alt={service.alt}
+                    className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+                  />
+                </div>
                 <CardHeader>
-                  <CardTitle className="text-2xl font-bold">{service.title}</CardTitle>
-                  <CardDescription className="text-base text-white">
-                    {service.description}
-                  </CardDescription>
+                  <CardTitle>{service.title}</CardTitle>
+                  <CardDescription>{service.description}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ul className="space-y-2">
-                    {service.features.map((feature, i) => (
-                      <li key={i} className="flex items-start">
-                        <span className="text-blue-300 mr-2">✓</span>
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <p className="text-sm text-gray-500">
+                    Professional care for your garments with attention to every detail.
+                  </p>
                 </CardContent>
-              </div>
-            </Card>
+                <CardFooter>
+                  <Button variant="outline" className="w-full">Learn More</Button>
+                </CardFooter>
+              </Card>
+            </motion.div>
           ))}
         </div>
       </div>

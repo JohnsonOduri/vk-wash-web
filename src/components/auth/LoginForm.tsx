@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Key } from "lucide-react";
@@ -35,14 +36,35 @@ export const LoginForm = ({ onToggleForm, onSubmit }: LoginFormProps) => {
     }
   });
 
-  const handleSubmit = (event: React.FormEvent) => {
-    event.preventDefault();
-    onSubmit();
+  const onSubmitForm = async (data: LoginValues) => {
+    try {
+      setLoginError("");
+      const success = await loginWithEmail(data.email, data.password);
+      
+      if (success) {
+        // We'll check the user role in the onSubmit callback
+        onSubmit();
+      } else {
+        setLoginError("Invalid login credentials. Please try again.");
+        toast({
+          title: "Login Failed",
+          description: "Invalid credentials. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      setLoginError(error.message || "An error occurred during login");
+      toast({
+        title: "Login Failed",
+        description: error.message || "Something went wrong",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmitForm)} className="space-y-4">
         <FormField 
           control={form.control} 
           name="email" 

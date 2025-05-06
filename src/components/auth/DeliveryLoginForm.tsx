@@ -1,3 +1,5 @@
+
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Key } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -17,8 +19,9 @@ const deliveryLoginSchema = z.object({
 type DeliveryLoginValues = z.infer<typeof deliveryLoginSchema>;
 
 export const DeliveryLoginForm = ({ onSubmit }: { onSubmit: () => void }) => {
-  const { loginWithEmail, user } = useFirebaseAuth();
+  const { loginWithEmail } = useFirebaseAuth();
   const navigate = useNavigate();
+  const [loginError, setLoginError] = useState("");
   
   const form = useForm<DeliveryLoginValues>({
     resolver: zodResolver(deliveryLoginSchema),
@@ -28,30 +31,16 @@ export const DeliveryLoginForm = ({ onSubmit }: { onSubmit: () => void }) => {
     }
   });
 
-  const handleSubmit = (event: React.FormEvent) => {
-    event.preventDefault();
-    onSubmit();
-  };
-
   const onSubmitForm = async (data: DeliveryLoginValues) => {
     try {
+      setLoginError("");
       const success = await loginWithEmail(data.email, data.password);
+      
       if (success) {
-        // Check if the user has the correct role
-        if (user && user.role === "delivery") {
-          toast({
-            title: "Login Successful",
-            description: "Welcome to VK Wash Delivery"
-          });
-          navigate("/delivery-dashboard");
-        } else {
-          toast({
-            title: "Access Denied",
-            description: "This account doesn't have delivery staff permissions",
-            variant: "destructive"
-          });
-        }
+        // We'll check the user role in the onSubmit callback
+        onSubmit();
       } else {
+        setLoginError("Invalid login credentials. Please try again.");
         toast({
           title: "Login Failed",
           description: "Invalid credentials. Please try again.",
@@ -59,6 +48,7 @@ export const DeliveryLoginForm = ({ onSubmit }: { onSubmit: () => void }) => {
         });
       }
     } catch (error: any) {
+      setLoginError(error.message || "An error occurred during login");
       toast({
         title: "Login Failed",
         description: error.message || "Something went wrong",
@@ -103,6 +93,8 @@ export const DeliveryLoginForm = ({ onSubmit }: { onSubmit: () => void }) => {
             </FormItem>
           )} 
         />
+        
+        {loginError && <div className="text-sm text-red-500">{loginError}</div>}
         
         <Button type="submit" className="w-full">
           Log in

@@ -50,8 +50,9 @@ const ServiceTypeSelection = ({ control }: ServiceTypeSelectionProps) => {
               <FormControl>
                 <RadioGroup 
                   onValueChange={field.onChange} 
-                  defaultValue={field.value}
+                  value={field.value}
                   className="grid grid-cols-1 md:grid-cols-3 gap-4"
+                  defaultValue="Regular" // Ensure a default value is always selected
                 >
                   {serviceOptions.map((option) => (
                     <FormItem key={option.value}>
