@@ -9,6 +9,12 @@ import {
   CardTitle 
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { 
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import { useState } from "react";
 
 // Import images
 import basicWash from "./pictures/basic-wash.jpg";
@@ -61,6 +67,13 @@ const Services = () => {
       image: basicWash,
       alt: "Basic Wash",
       animation: floatAnimation,
+      details: [
+        "Gentle machine wash with premium detergents",
+        "Stain pre-treatment for common spots",
+        "Careful sorting by color and fabric type",
+        "Tumble dry on appropriate temperature settings",
+        "Basic folding and packaging"
+      ]
     },
     {
       title: "Premium Wash",
@@ -68,6 +81,13 @@ const Services = () => {
       image: premiumWash,
       alt: "Premium Wash",
       animation: pulseAnimation,
+      details: [
+        "Advanced stain removal techniques",
+        "Special care for delicate fabrics",
+        "Color-safe washing procedures",
+        "Fabric softener and anti-static treatment",
+        "Precise folding and premium packaging"
+      ]
     },
     {
       title: "Express Services",
@@ -75,6 +95,13 @@ const Services = () => {
       image: expressServices,
       alt: "Express Services",
       animation: floatAnimation,
+      details: [
+        "Same-day service available",
+        "Priority handling and processing",
+        "Expedited washing and drying",
+        "Rush stain treatment options",
+        "Quick packaging and delivery"
+      ]
     },
     {
       title: "Dry Cleaning",
@@ -82,6 +109,13 @@ const Services = () => {
       image: dryCleaning,
       alt: "Dry Cleaning",
       animation: pulseAnimation,
+      details: [
+        "Specialized solvent cleaning for delicate items",
+        "Spot treatment for stubborn stains",
+        "Safe process for wool, silk, and synthetics",
+        "Pressing and steaming for wrinkle removal",
+        "Protective packaging to maintain shape"
+      ]
     },
     {
       title: "Ironing",
@@ -89,6 +123,13 @@ const Services = () => {
       image: ironing,
       alt: "Ironing",
       animation: floatAnimation,
+      details: [
+        "Temperature-appropriate ironing for all fabrics",
+        "Steam treatment for stubborn wrinkles",
+        "Perfect creases for formal attire",
+        "Special attention to collars and cuffs",
+        "Careful hanging to prevent new wrinkles"
+      ]
     },
     {
       title: "Washing",
@@ -96,8 +137,17 @@ const Services = () => {
       image: washing,
       alt: "Washing",
       animation: pulseAnimation,
+      details: [
+        "Fabric-appropriate water temperature selection",
+        "High-quality detergents for all fabric types",
+        "Thorough rinse cycle to remove all soap residue",
+        "Gentle handling to prevent stretching or damage",
+        "Quick drying to prevent mildew or odors"
+      ]
     },
   ];
+
+  const [hoveredService, setHoveredService] = useState<number | null>(null);
 
   return (
     <section id="services" className="bg-gray-50 py-20">
@@ -125,6 +175,8 @@ const Services = () => {
               viewport={{ once: true, margin: "-100px" }}
               variants={service.animation}
               className="h-full"
+              onMouseEnter={() => setHoveredService(index)}
+              onMouseLeave={() => setHoveredService(null)}
             >
               <Card className="overflow-hidden h-full transition-all duration-300 hover:shadow-lg">
                 <div className="w-full h-48 overflow-hidden">
@@ -142,9 +194,60 @@ const Services = () => {
                   <p className="text-sm text-gray-500">
                     Professional care for your garments with attention to every detail.
                   </p>
+                  
+                  {hoveredService === index && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="mt-4 bg-gray-50 p-3 rounded-md"
+                    >
+                      <h4 className="font-semibold mb-2 text-sm">Service Features:</h4>
+                      <ul className="text-sm text-gray-600 space-y-1">
+                        {service.details.map((detail, i) => (
+                          <motion.li 
+                            key={i}
+                            initial={{ opacity: 0, x: -5 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.1 }}
+                            className="flex items-start"
+                          >
+                            <span className="text-blue-500 mr-2">•</span>
+                            {detail}
+                          </motion.li>
+                        ))}
+                      </ul>
+                    </motion.div>
+                  )}
                 </CardContent>
                 <CardFooter>
-                  <Button variant="outline" className="w-full">Learn More</Button>
+                  <HoverCard>
+                    <HoverCardTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        className="w-full transition-all duration-300 hover:bg-blue-500 hover:text-white hover:scale-105"
+                      >
+                        Learn More
+                      </Button>
+                    </HoverCardTrigger>
+                    <HoverCardContent className="w-80">
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-semibold">{service.title} Details</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Our {service.title.toLowerCase()} service includes professional handling with the following features:
+                        </p>
+                        <ul className="text-sm space-y-1">
+                          {service.details.map((detail, i) => (
+                            <li key={i} className="flex items-start">
+                              <span className="text-blue-500 mr-2">•</span>
+                              {detail}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </HoverCardContent>
+                  </HoverCard>
                 </CardFooter>
               </Card>
             </motion.div>
