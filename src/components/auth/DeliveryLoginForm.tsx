@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Key } from "lucide-react";
@@ -37,14 +36,13 @@ export const DeliveryLoginForm = ({ onSubmit }: { onSubmit: () => void }) => {
       const success = await loginWithEmail(data.email, data.password);
       
       if (success) {
-        // We'll check the user role in the onSubmit callback
         onSubmit();
       } else {
         setLoginError("Invalid login credentials. Please try again.");
         toast({
           title: "Login Failed",
           description: "Invalid credentials. Please try again.",
-          variant: "destructive"
+          variant: "destructive",
         });
       }
     } catch (error: any) {
@@ -52,7 +50,7 @@ export const DeliveryLoginForm = ({ onSubmit }: { onSubmit: () => void }) => {
       toast({
         title: "Login Failed",
         description: error.message || "Something went wrong",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };

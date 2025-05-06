@@ -19,7 +19,7 @@ const About = () => {
           <div className="lg:w-1/2">
             <h3 className="text-2xl font-bold mb-4">Our Story</h3>
             <p className="text-gray-600 mb-4">
-            VK Wash Laundry & Dry Cleaning Services has been delivering quality laundry care in Vattinagulapally, Gandipet, Hyderabad since <b>1992</b>. We offer reliable, citywide laundry, dry cleaning, and steam ironing services.
+            VK Wash Laundry & Dry Cleaning Services has been delivering quality laundry care in <b>Hyderabad</b> since <b>1992</b>. We offer reliable, citywide laundry, dry cleaning, and steam ironing services.
             </p>
             <p className="text-gray-600 mb-4">
               Founded by <b>Mr. Vijay Kumar Oduri</b>, VK Wash was inspired by his father, <b>Mr. Veeraraju Oduri</b>. Driven by passion and hard work, Mr. Vijay built the business from scratch. Today, he is supported by his wife<b> Mrs. Mani Oduri</b> and son  <b>Mr. Johnson Oduri</b>, who manages tech operations, keeping the service modern and efficient.

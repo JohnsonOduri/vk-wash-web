@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,6 +7,7 @@ import Navigation from "@/components/Navigation";
 import { useFirebaseAuth } from "@/contexts/FirebaseAuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 const Login = () => {
   const [error, setError] = useState("");
@@ -30,6 +30,11 @@ const Login = () => {
     // Check if user is trying to use wrong login section
     if (user?.role === "delivery") {
       setError("You are logged in as Delivery Staff. Please use the Delivery Staff Login section.");
+      toast({
+        title: "Login Error",
+        description: "You are logged in as Delivery Staff. Please use the Delivery Staff Login section.",
+        variant: "destructive",
+      });
     } else {
       setError("");
       navigate("/customer-dashboard");
@@ -41,6 +46,11 @@ const Login = () => {
     // Check if user is trying to use wrong login section
     if (user?.role === "customer") {
       setError("You are logged in as a Customer. Please use the Customer Login section.");
+      toast({
+        title: "Login Error",
+        description: "You are logged in as a Customer. Please use the Customer Login section.",
+        variant: "destructive",
+      });
     } else {
       setError("");
       navigate("/delivery-dashboard");
