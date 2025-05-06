@@ -1,4 +1,3 @@
-
 import { motion } from "framer-motion";
 import { 
   Card, 
@@ -17,9 +16,7 @@ import {
 import { useState } from "react";
 
 // Import images
-import basicWash from "./pictures/basic-wash.jpg";
-import premiumWash from "./pictures/premium-wash.jpg";
-import expressServices from "./pictures/express-services.jpg";
+
 import dryCleaning from "./pictures/dryCleaning.jpg";
 import ironing from "./pictures/ironing.jpg";
 import washing from "./pictures/washing.jpg";
@@ -61,48 +58,7 @@ const fadeInAnimation = {
 
 const Services = () => {
   const services = [
-    {
-      title: "Basic Wash",
-      description: "Our standard washing service",
-      image: basicWash,
-      alt: "Basic Wash",
-      animation: floatAnimation,
-      details: [
-        "Gentle machine wash with premium detergents",
-        "Stain pre-treatment for common spots",
-        "Careful sorting by color and fabric type",
-        "Tumble dry on appropriate temperature settings",
-        "Basic folding and packaging"
-      ]
-    },
-    {
-      title: "Premium Wash",
-      description: "Premium treatment for your clothes",
-      image: premiumWash,
-      alt: "Premium Wash",
-      animation: pulseAnimation,
-      details: [
-        "Advanced stain removal techniques",
-        "Special care for delicate fabrics",
-        "Color-safe washing procedures",
-        "Fabric softener and anti-static treatment",
-        "Precise folding and premium packaging"
-      ]
-    },
-    {
-      title: "Express Services",
-      description: "Quick turnaround for urgent needs",
-      image: expressServices,
-      alt: "Express Services",
-      animation: floatAnimation,
-      details: [
-        "Same-day service available",
-        "Priority handling and processing",
-        "Expedited washing and drying",
-        "Rush stain treatment options",
-        "Quick packaging and delivery"
-      ]
-    },
+    
     {
       title: "Dry Cleaning",
       description: "Professional dry cleaning",
@@ -173,7 +129,8 @@ const Services = () => {
               initial="initial"
               whileInView="animate"
               viewport={{ once: true, margin: "-100px" }}
-              variants={service.animation}
+              animate={hoveredService === index ? { scale: 1.05 } : { scale: 1 }}
+              transition={{ duration: 0.3 }}
               className="h-full"
               onMouseEnter={() => setHoveredService(index)}
               onMouseLeave={() => setHoveredService(null)}
@@ -223,14 +180,7 @@ const Services = () => {
                 </CardContent>
                 <CardFooter>
                   <HoverCard>
-                    <HoverCardTrigger asChild>
-                      <Button 
-                        variant="outline" 
-                        className="w-full transition-all duration-300 hover:bg-blue-500 hover:text-white hover:scale-105"
-                      >
-                        Learn More
-                      </Button>
-                    </HoverCardTrigger>
+                    
                     <HoverCardContent className="w-80">
                       <div className="space-y-2">
                         <h4 className="text-sm font-semibold">{service.title} Details</h4>

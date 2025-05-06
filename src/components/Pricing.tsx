@@ -1,5 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { motion } from 'framer-motion';
+import { useState } from 'react';
 
 const pricingData = [
   {
@@ -50,6 +52,8 @@ const pricingData = [
 ];
 
 const Pricing = () => {
+  const [hoveredPlan, setHoveredPlan] = useState<number | null>(null);
+
   function scrollToSection(sectionId: string): void {
     const section = document.getElementById(sectionId);
     if (section) {
@@ -69,49 +73,56 @@ const Pricing = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {pricingData.map((plan, index) => (
-            <Card
+            <motion.div
               key={index}
-              className={`relative border-none overflow-hidden rounded-lg shadow-lg ${plan.popular ? 'shadow-md' : ''}`}
-              style={{ backgroundImage: `url(${plan.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+              animate={hoveredPlan === index ? { scale: 1.05 } : { scale: 1 }}
+              transition={{ duration: 0.3 }}
+              onMouseEnter={() => setHoveredPlan(index)}
+              onMouseLeave={() => setHoveredPlan(null)}
             >
-              <div className="absolute inset-0 bg-black bg-opacity-50 "></div>
-              <div className="relative z-10 p-6 text-white">
-                {plan.popular && (
-                  <div 
-                    className="absolute -top-4 left-0 right-0 mx-auto w-fit px-4 py-1 bg-blue text-white text-sm font-medium rounded-full z-20"
-                    style={{ transform: 'translateY(-50%)' }}
-                  >
-                    Most Popular
-                  </div>
-                )}
-                <CardHeader>
-                  <CardTitle className="text-3xl font-bold text-white">{plan.title}</CardTitle>
-                  <div className="mt-4 mb-2 text-white">
-                    <span className="text-2xl font-bold">{plan.price} Pricing</span>
-                  </div>
-                  <CardDescription className="text-base text-white">
-                    {plan.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-3">
-                    {plan.features.map((feature, i) => (
-                      <li key={i} className="flex items-start">
-                        <span className="text-blue-300 mr-2">✓</span>
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-                <CardFooter>
-                  <Button 
-                    className={`w-full ${plan.popular ? 'btn-primary' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`}
-                  >
-                    {plan.buttonText}
-                  </Button>
-                </CardFooter>
-              </div>
-            </Card>
+              <Card
+                className={`relative border-none overflow-hidden rounded-lg shadow-lg ${plan.popular ? 'shadow-md' : ''}`}
+                style={{ backgroundImage: `url(${plan.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+              >
+                <div className="absolute inset-0 bg-black bg-opacity-50 "></div>
+                <div className="relative z-10 p-6 text-white">
+                  {plan.popular && (
+                    <div 
+                      className="absolute -top-4 left-0 right-0 mx-auto w-fit px-4 py-1 bg-blue text-white text-sm font-medium rounded-full z-20"
+                      style={{ transform: 'translateY(-50%)' }}
+                    >
+                      Most Popular
+                    </div>
+                  )}
+                  <CardHeader>
+                    <CardTitle className="text-3xl font-bold text-white">{plan.title}</CardTitle>
+                    <div className="mt-4 mb-2 text-white">
+                      <span className="text-2xl font-bold">{plan.price} Pricing</span>
+                    </div>
+                    <CardDescription className="text-base text-white">
+                      {plan.description}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-3">
+                      {plan.features.map((feature, i) => (
+                        <li key={i} className="flex items-start">
+                          <span className="text-blue-300 mr-2">✓</span>
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                  <CardFooter>
+                    <Button 
+                      className={`w-full ${plan.popular ? 'btn-primary' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`}
+                    >
+                      {plan.buttonText}
+                    </Button>
+                  </CardFooter>
+                </div>
+              </Card>
+            </motion.div>
           ))}
         </div>
         
