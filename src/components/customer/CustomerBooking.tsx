@@ -26,7 +26,7 @@ const bookingSchema = z.object({
 
 type BookingValues = z.infer<typeof bookingSchema>;
 
-// Service pricing
+// Service base pricing
 const PRICING = {
   Regular: { base: 100 },
   Express: { base: 150 },
@@ -54,12 +54,12 @@ const CustomerBooking: React.FC<CustomerBookingProps> = ({ customerId }) => {
 
   const watchServiceType = form.watch('serviceType');
 
-  // Calculate total price based on service type
-  const calculateTotal = () => {
+  // Calculate base price based on service type
+  const calculateBasePrice = () => {
     return PRICING[watchServiceType].base;
   };
 
-  const total = calculateTotal();
+  const basePrice = calculateBasePrice();
   
   const onSubmit = async (data: BookingValues) => {
     if (!user) {
@@ -74,18 +74,18 @@ const CustomerBooking: React.FC<CustomerBookingProps> = ({ customerId }) => {
     setIsSubmitting(true);
     
     try {
-      // Create a service type entry (not items array)
+      // Create a service type entry
       const serviceEntry = {
         name: `${data.serviceType} Laundry Service`,
-        price: total,
+        price: basePrice,
         quantity: 1
       };
       
       const orderId = await createOrder({
         userId: user.id,
         serviceType: data.serviceType,
-        items: [serviceEntry], // We'll add actual clothing items later in the processing phase
-        total,
+        items: [serviceEntry], // Actual clothing items will be added during processing
+        total: basePrice,
         pickupAddress: data.pickupAddress,
         pickupDate: data.pickupDate,
         specialInstructions: data.specialInstructions || undefined,
@@ -93,7 +93,7 @@ const CustomerBooking: React.FC<CustomerBookingProps> = ({ customerId }) => {
 
       toast({
         title: 'Service Booked',
-        description: `Your ${data.serviceType} service has been booked for ${data.pickupDate}! Delivery staff will add your clothing items during pickup.`,
+        description: `Your ${data.serviceType} service has been booked for ${data.pickupDate}. Delivery staff will add your clothing items during pickup.`,
       });
       
       // Navigate to orders tab
@@ -126,7 +126,7 @@ const CustomerBooking: React.FC<CustomerBookingProps> = ({ customerId }) => {
             
             <div>
               <OrderSummary 
-                total={total} 
+                total={basePrice} 
                 submitting={isSubmitting} 
                 formErrors={Object.keys(form.formState.errors).length > 0}
               />

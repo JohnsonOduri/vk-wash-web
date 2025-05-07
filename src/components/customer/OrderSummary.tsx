@@ -17,11 +17,11 @@ const OrderSummary = ({ total, submitting, formErrors }: OrderSummaryProps) => {
       </CardHeader>
       <CardContent>
         <div className="text-lg font-semibold flex justify-between">
-          <span>Estimated Total:</span>
+          <span>Service Base Price:</span>
           <span>${total.toFixed(2)}</span>
         </div>
         <p className="text-sm text-gray-500 mt-2">
-          Final price may vary based on the number of items and specific requirements.
+          Final price will be calculated after pickup when items are counted.
         </p>
         {formErrors && (
           <p className="text-sm text-red-500 mt-2">

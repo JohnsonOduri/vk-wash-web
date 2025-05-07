@@ -16,7 +16,10 @@ const PickupDetails = ({ control, setValue, errors }: PickupDetailsProps) => {
     <Card>
       <CardHeader>
         <CardTitle>Pickup Details</CardTitle>
-        <CardDescription>Tell us where and when to pick up your items</CardDescription>
+        <CardDescription>
+          Tell us where and when to pick up your items. 
+          The final bill will be generated after pickup based on the number and type of items.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <FormField
