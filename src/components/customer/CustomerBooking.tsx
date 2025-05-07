@@ -12,6 +12,7 @@ import OrderSummary from '@/components/customer/OrderSummary';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { createOrder } from '@/services/orderService';
 import { useNavigate } from 'react-router-dom';
+import { FieldErrors } from 'react-hook-form';
 
 // Define the schema for the form with validation
 const bookingSchema = z.object({
@@ -73,15 +74,17 @@ const CustomerBooking: React.FC<CustomerBookingProps> = ({ customerId }) => {
     setIsSubmitting(true);
     
     try {
-      // Create a simplified items array
-      const items = [
-        { name: `${data.serviceType} Laundry Service`, quantity: 1, price: total }
-      ];
+      // Create a service type entry (not items array)
+      const serviceEntry = {
+        name: `${data.serviceType} Laundry Service`,
+        price: total,
+        quantity: 1
+      };
       
       const orderId = await createOrder({
         userId: user.id,
         serviceType: data.serviceType,
-        items,
+        items: [serviceEntry], // We'll add actual clothing items later in the processing phase
         total,
         pickupAddress: data.pickupAddress,
         pickupDate: data.pickupDate,
@@ -89,8 +92,8 @@ const CustomerBooking: React.FC<CustomerBookingProps> = ({ customerId }) => {
       });
 
       toast({
-        title: 'Order Placed',
-        description: `Your ${data.serviceType} service has been booked for ${data.pickupDate}!`,
+        title: 'Service Booked',
+        description: `Your ${data.serviceType} service has been booked for ${data.pickupDate}! Delivery staff will add your clothing items during pickup.`,
       });
       
       // Navigate to orders tab

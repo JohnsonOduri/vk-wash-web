@@ -12,21 +12,24 @@ const serviceOptions = [
     title: 'Regular Service',
     description: '3-4 Day Turnaround',
     price: 'Standard pricing',
-    icon: <Shirt className="h-5 w-5" />
+    icon: <Shirt className="h-5 w-5" />,
+    details: 'Our standard service includes basic cleaning for everyday garments.'
   },
   {
     value: 'Premium',
     title: 'Premium Service',
     description: '2-3 Day Turnaround',
     price: '+20% on standard',
-    icon: <Star className="h-5 w-5" />
+    icon: <Star className="h-5 w-5" />,
+    details: 'Enhanced service with special care for delicate fabrics and stain treatments.'
   },
   {
     value: 'Express',
     title: 'Express Service',
     description: '24 Hour Turnaround',
     price: '+50% on standard',
-    icon: <Clock className="h-5 w-5" />
+    icon: <Clock className="h-5 w-5" />,
+    details: 'Priority processing with same-day or next-day delivery options.'
   }
 ];
 
@@ -39,7 +42,7 @@ const ServiceTypeSelection = ({ control }: ServiceTypeSelectionProps) => {
     <Card>
       <CardHeader>
         <CardTitle>Service Type</CardTitle>
-        <CardDescription>Choose the service that best fits your needs</CardDescription>
+        <CardDescription>Choose the laundry service that best fits your needs. Your clothing items will be added by our delivery staff during pickup.</CardDescription>
       </CardHeader>
       <CardContent>
         <FormField
@@ -79,8 +82,9 @@ const ServiceTypeSelection = ({ control }: ServiceTypeSelectionProps) => {
                                 <Check className="h-5 w-5 text-blue" />
                               )}
                             </div>
-                            <div className="mt-2 text-sm font-medium">
-                              {option.price}
+                            <div className="mt-2 text-sm">
+                              <span className="font-medium">{option.price}</span>
+                              <p className="mt-1 text-gray-500">{option.details}</p>
                             </div>
                           </CardContent>
                         </Card>

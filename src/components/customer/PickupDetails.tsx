@@ -2,31 +2,21 @@
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Control, FieldErrors } from 'react-hook-form';
-import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
-import { useEffect } from 'react';
+import { Textarea } from '@/components/ui/textarea';
+import { Control, FieldErrors, UseFormSetValue } from 'react-hook-form';
 
 interface PickupDetailsProps {
   control: Control<any>;
-  setValue: any;
-  errors?: FieldErrors;
+  setValue: UseFormSetValue<any>;
+  errors: FieldErrors<any>;
 }
 
 const PickupDetails = ({ control, setValue, errors }: PickupDetailsProps) => {
-  const { user } = useFirebaseAuth();
-
-  // Pre-fill the address with the user's saved address
-  useEffect(() => {
-    if (user?.address) {
-      setValue('pickupAddress', user.address);
-    }
-  }, [user, setValue]);
-
   return (
     <Card>
       <CardHeader>
         <CardTitle>Pickup Details</CardTitle>
-        <CardDescription>Enter details for laundry pickup</CardDescription>
+        <CardDescription>Tell us where and when to pick up your items</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <FormField
@@ -42,6 +32,7 @@ const PickupDetails = ({ control, setValue, errors }: PickupDetailsProps) => {
             </FormItem>
           )}
         />
+        
         <FormField
           control={control}
           name="pickupDate"
@@ -55,6 +46,7 @@ const PickupDetails = ({ control, setValue, errors }: PickupDetailsProps) => {
             </FormItem>
           )}
         />
+        
         <FormField
           control={control}
           name="specialInstructions"
@@ -62,7 +54,10 @@ const PickupDetails = ({ control, setValue, errors }: PickupDetailsProps) => {
             <FormItem>
               <FormLabel>Special Instructions (Optional)</FormLabel>
               <FormControl>
-                <Input placeholder="Any special instructions for pickup or cleaning" {...field} />
+                <Textarea 
+                  placeholder="Any special instructions for pickup or handling of your items" 
+                  {...field} 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

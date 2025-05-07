@@ -21,7 +21,7 @@ const OrderSummary = ({ total, submitting, formErrors }: OrderSummaryProps) => {
           <span>${total.toFixed(2)}</span>
         </div>
         <p className="text-sm text-gray-500 mt-2">
-          Final price may vary based on weight and specific requirements.
+          Final price may vary based on the number of items and specific requirements.
         </p>
         {formErrors && (
           <p className="text-sm text-red-500 mt-2">
