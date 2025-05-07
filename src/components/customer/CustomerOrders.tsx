@@ -3,13 +3,39 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Star, Clock, Package, User, Receipt, CreditCard } from 'lucide-react';
+import { 
+  Star, 
+  Clock, 
+  Package, 
+  User, 
+  Receipt, 
+  CreditCard,
+  AlertCircle,
+  X
+} from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogFooter, 
+  DialogDescription 
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { getBillsByCustomerId } from '@/services/laundryItemService';
 import { Bill } from '@/models/LaundryItem';
 import { toast } from '@/hooks/use-toast';
-import { getOrdersByUser, Order } from '@/services/orderService';
+import { getOrdersByUser, Order, cancelOrder } from '@/services/orderService';
 
 interface CustomerOrdersProps {
   customerId: string;
@@ -20,9 +46,12 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
   const [activeOrder, setActiveOrder] = useState<string | null>(null);
   const [viewingBill, setViewingBill] = useState<Bill | null>(null);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [customerBills, setCustomerBills] = useState<Bill[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -57,8 +86,8 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
     return dateB.getTime() - dateA.getTime();
   });
   
-  const currentOrders = sortedOrders.filter(order => order.status !== 'delivered');
-  const pastOrders = sortedOrders.filter(order => order.status === 'delivered');
+  const currentOrders = sortedOrders.filter(order => order.status !== 'delivered' && order.status !== 'cancelled');
+  const pastOrders = sortedOrders.filter(order => order.status === 'delivered' || order.status === 'cancelled');
 
   const handleRateDelivery = (orderId: string) => {
     navigate('/reviews', { state: { orderId } });
@@ -96,6 +125,43 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
     setPaymentDialogOpen(false);
     setViewingBill(null);
   };
+
+  const openCancelDialog = (orderId: string) => {
+    setSelectedOrderId(orderId);
+    setCancelDialogOpen(true);
+  };
+
+  const handleCancelOrder = async () => {
+    if (!selectedOrderId) return;
+    
+    setIsCancelling(true);
+    try {
+      await cancelOrder(selectedOrderId);
+      
+      // Update local state to reflect the cancellation
+      setOrders(orders.map(order => 
+        order.id === selectedOrderId 
+          ? { ...order, status: 'cancelled' } 
+          : order
+      ));
+      
+      toast({
+        title: "Order Cancelled",
+        description: "Your order has been successfully cancelled",
+      });
+    } catch (error) {
+      console.error("Error cancelling order:", error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel the order. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCancelling(false);
+      setCancelDialogOpen(false);
+      setSelectedOrderId(null);
+    }
+  };
   
   const getStatusColor = (status: string) => {
     switch(status) {
@@ -103,6 +169,7 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
       case 'picked': return 'text-blue-500';
       case 'processing': return 'text-purple-500';
       case 'delivered': return 'text-green-500';
+      case 'cancelled': return 'text-red-500';
       default: return 'text-gray-500';
     }
   };
@@ -113,6 +180,7 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
       case 'picked': return 'Picked Up';
       case 'processing': return 'Processing';
       case 'delivered': return 'Delivered';
+      case 'cancelled': return 'Cancelled';
       default: return status.charAt(0).toUpperCase() + status.slice(1);
     }
   };
@@ -123,6 +191,7 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
       case 'picked': return 40;
       case 'processing': return 75;
       case 'delivered': return 100;
+      case 'cancelled': return 0;
       default: return 0;
     }
   };
@@ -135,6 +204,10 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
       day: 'numeric',
       year: 'numeric'
     });
+  };
+
+  const canCancelOrder = (order: Order) => {
+    return order.status === 'pending';
   };
 
   const renderOrderCard = (order: Order, showRateButton: boolean = false) => {
@@ -251,16 +324,30 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
             {activeOrder === order.id ? 'Hide Details' : 'View Details'}
           </Button>
           
-          {showRateButton && order.status === 'delivered' && (
-            <Button 
-              size="sm" 
-              onClick={() => handleRateDelivery(order.id || '')}
-              className="bg-blue hover:bg-blue-dark"
-            >
-              <Star className="h-4 w-4 mr-2" />
-              Rate Service
-            </Button>
-          )}
+          <div className="flex space-x-2">
+            {canCancelOrder(order) && (
+              <Button 
+                size="sm"
+                variant="outline"
+                className="text-red-600 border-red-200 hover:bg-red-50"
+                onClick={() => openCancelDialog(order.id || '')}
+              >
+                <X className="h-4 w-4 mr-2" />
+                Cancel Order
+              </Button>
+            )}
+            
+            {showRateButton && order.status === 'delivered' && (
+              <Button 
+                size="sm" 
+                onClick={() => handleRateDelivery(order.id || '')}
+                className="bg-blue hover:bg-blue-dark"
+              >
+                <Star className="h-4 w-4 mr-2" />
+                Rate Service
+              </Button>
+            )}
+          </div>
         </CardFooter>
       </Card>
     );
@@ -412,6 +499,28 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Cancel Order Confirmation Dialog */}
+      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Order</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to cancel this order? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isCancelling}>No, Keep Order</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleCancelOrder}
+              disabled={isCancelling}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isCancelling ? "Cancelling..." : "Yes, Cancel Order"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

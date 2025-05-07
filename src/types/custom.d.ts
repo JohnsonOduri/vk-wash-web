@@ -1,5 +1,4 @@
 
-
 // This file contains custom type declarations for the project
 
 // React Router DOM
@@ -24,12 +23,15 @@ declare module 'react-hook-form' {
     setValue: (name: string, value: any) => void;
     control: any;
   }
-  export interface Control {}
-  export interface FieldValues {}
-  export interface FieldPath<T> {}
-  export interface ControllerProps<T extends FieldValues, U extends FieldPath<T>> {}
-  export interface FieldErrors<T> {}
-  export interface UseFormSetValue<T> {}
+  export const Control: any;
+  export const FieldValues: any;
+  export const FieldPath: any;
+  export const ControllerProps: any;
+  export const FieldErrors: any;
+  export const UseFormSetValue: any;
+  export const Controller: any;
+  export const FormProvider: any;
+  export const useFormContext: any;
 }
 
 // Zod
@@ -68,3 +70,9 @@ declare module '@hookform/resolvers/zod' {
   export const zodResolver: any;
 }
 
+// TanStack React Query
+declare module '@tanstack/react-query' {
+  export const QueryClientProvider: any;
+  export const useQueryClient: any;
+  export const useQuery: any;
+}
