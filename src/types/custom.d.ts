@@ -24,11 +24,11 @@ declare module 'react-hook-form' {
     control: any;
   }
   export const Control: any;
-  export const FieldValues: any;
-  export const FieldPath: any;
-  export const ControllerProps: any;
-  export const FieldErrors: any;
-  export const UseFormSetValue: any;
+  export type FieldValues = any;
+  export type FieldPath<T> = any;
+  export type ControllerProps<T extends FieldValues = FieldValues, TName extends FieldPath<T> = FieldPath<T>> = any;
+  export type FieldErrors = any;
+  export type UseFormSetValue<T extends FieldValues = FieldValues> = any;
   export const Controller: any;
   export const FormProvider: any;
   export const useFormContext: any;
@@ -36,21 +36,16 @@ declare module 'react-hook-form' {
 
 // Zod
 declare module 'zod' {
-  export const z: any;
-  export function object(schema: any): any;
-  export function string(): any;
-  export function number(): any;
-  export function enumType(values: any[], options?: any): any;
-  export interface ZodType<T> {
+  export const z: {
+    object: (schema: any) => any;
+    string: () => any;
+    number: () => any;
+    enum: (values: any[], options?: any) => any;
+    infer: <T>(schema: any) => T;
+  };
+  export type ZodType<T> = {
     infer: T;
-  }
-  export namespace z {
-    export function object(schema: any): any;
-    export function string(): any;
-    export function number(): any;
-    export function enumType(values: any[], options?: any): any;
-    export interface infer<T> extends T {}
-  }
+  };
 }
 
 // React Day Picker
