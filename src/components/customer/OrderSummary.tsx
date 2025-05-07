@@ -6,7 +6,7 @@ import { Package } from 'lucide-react';
 interface OrderSummaryProps {
   total: number;
   submitting: boolean;
-  formErrors?: boolean;
+  formErrors: boolean;
 }
 
 const OrderSummary = ({ total, submitting, formErrors }: OrderSummaryProps) => {
@@ -33,7 +33,7 @@ const OrderSummary = ({ total, submitting, formErrors }: OrderSummaryProps) => {
         <Button 
           type="submit" 
           className="w-full" 
-          disabled={submitting || (formErrors ?? false)}
+          disabled={submitting || formErrors}
         >
           {submitting ? (
             <>Processing...</>
