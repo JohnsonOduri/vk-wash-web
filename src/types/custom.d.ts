@@ -1,4 +1,5 @@
 
+
 // This file contains custom type declarations for the project
 
 // React Router DOM
@@ -37,7 +38,7 @@ declare module 'zod' {
   export function object(schema: any): any;
   export function string(): any;
   export function number(): any;
-  export function enum(values: any[], options?: any): any;
+  export function enumType(values: any[], options?: any): any;
   export interface ZodType<T> {
     infer: T;
   }
@@ -45,7 +46,7 @@ declare module 'zod' {
     export function object(schema: any): any;
     export function string(): any;
     export function number(): any;
-    export function enum(values: any[], options?: any): any;
+    export function enumType(values: any[], options?: any): any;
     export interface infer<T> extends T {}
   }
 }
@@ -66,3 +67,4 @@ declare module 'sonner' {
 declare module '@hookform/resolvers/zod' {
   export const zodResolver: any;
 }
+
