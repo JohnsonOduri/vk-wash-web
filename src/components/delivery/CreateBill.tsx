@@ -1,30 +1,72 @@
 
 import { useState, useEffect } from 'react';
-import { CheckCircle, Plus, Minus, Trash } from 'lucide-react';
+import { CheckCircle, Plus, Minus, Trash, UserPlus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { LaundryItem, OrderItem } from '@/models/LaundryItem';
 import { getAllLaundryItems, createBill } from '@/services/laundryItemService';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { getOrderById } from '@/services/orderService';
 
 const CreateBill = ({ orderId, customerInfo }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useFirebaseAuth();
   const [items, setItems] = useState<LaundryItem[]>([]);
   const [selectedItems, setSelectedItems] = useState<OrderItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingOrder, setLoadingOrder] = useState(false);
+  const [isNewCustomer, setIsNewCustomer] = useState(!customerInfo);
   const [customerName, setCustomerName] = useState(customerInfo?.customerName || '');
   const [customerPhone, setCustomerPhone] = useState(customerInfo?.customerPhone || '');
+  const [customerId, setCustomerId] = useState(customerInfo?.customerId || '');
+  const [newCustomerDialogOpen, setNewCustomerDialogOpen] = useState(false);
+  
+  // Use location state if available (from navigation)
+  const orderIdFromState = location?.state?.orderId;
+  const currentOrderId = orderId || orderIdFromState;
 
   // Tax rate (10%)
   const taxRate = 0.10;
 
   useEffect(() => {
     loadLaundryItems();
-  }, []);
+    
+    // If we have an order ID but no customer info, fetch the order details
+    if (currentOrderId && !customerInfo) {
+      fetchOrderDetails(currentOrderId);
+    }
+  }, [currentOrderId]);
+
+  const fetchOrderDetails = async (id: string) => {
+    setLoadingOrder(true);
+    try {
+      const order = await getOrderById(id);
+      if (order) {
+        // If the order has customer info, use it
+        setCustomerId(order.userId || '');
+        // We'll need to fetch customer name and phone from a separate API call in a real app
+        // This is just a placeholder
+        setCustomerName(`Customer #${order.userId?.substring(0, 5)}`);
+        setIsNewCustomer(false);
+      }
+    } catch (error) {
+      console.error('Error fetching order details:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load order details',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoadingOrder(false);
+    }
+  };
 
   const loadLaundryItems = async () => {
     setIsLoading(true);
@@ -99,6 +141,31 @@ const CreateBill = ({ orderId, customerInfo }) => {
     return calculateSubtotal() + calculateTax();
   };
 
+  const handleOpenNewCustomerDialog = () => {
+    setNewCustomerDialogOpen(true);
+  };
+
+  const handleCreateNewCustomer = () => {
+    if (!customerName || !customerPhone) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please provide customer name and phone number',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // In a real app, this would create a customer record in the database
+    // For now, we'll just close the dialog and update the state
+    setIsNewCustomer(true);
+    setNewCustomerDialogOpen(false);
+    
+    toast({
+      title: 'Customer Added',
+      description: 'New customer details have been saved'
+    });
+  };
+
   const handleGenerateBill = async () => {
     if (!customerName || !customerPhone) {
       toast({
@@ -120,14 +187,14 @@ const CreateBill = ({ orderId, customerInfo }) => {
 
     try {
       const billData = {
-        customerId: customerInfo?.customerId || 'unknown',
+        customerId: customerId || 'guest',
         customerName,
         customerPhone,
         items: selectedItems,
         subtotal: calculateSubtotal(),
         tax: calculateTax(),
         total: calculateTotal(),
-        orderId: orderId  // Include order ID if available
+        orderId: currentOrderId || undefined  // Include order ID if available
       };
 
       await createBill(billData);
@@ -137,6 +204,11 @@ const CreateBill = ({ orderId, customerInfo }) => {
       });
       // Reset form
       setSelectedItems([]);
+      
+      // If we came here with an order, go back to delivery dashboard
+      if (currentOrderId) {
+        navigate('/delivery-dashboard');
+      }
     } catch (error) {
       console.error('Error creating bill:', error);
       toast({
@@ -152,6 +224,17 @@ const CreateBill = ({ orderId, customerInfo }) => {
     item.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  if (loadingOrder) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue mx-auto"></div>
+          <p className="mt-4 text-gray-500">Loading order details...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Create Bill</h2>
@@ -159,8 +242,19 @@ const CreateBill = ({ orderId, customerInfo }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <Card className="mb-6">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle>Customer Information</CardTitle>
+              {!customerInfo && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleOpenNewCustomerDialog}
+                  className="text-blue-600"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  New Customer
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-4 items-center gap-4">
@@ -173,6 +267,7 @@ const CreateBill = ({ orderId, customerInfo }) => {
                   onChange={(e) => setCustomerName(e.target.value)}
                   className="col-span-3"
                   placeholder="Customer Name"
+                  disabled={!!customerInfo}
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
@@ -185,8 +280,15 @@ const CreateBill = ({ orderId, customerInfo }) => {
                   onChange={(e) => setCustomerPhone(e.target.value)}
                   className="col-span-3"
                   placeholder="Customer Phone"
+                  disabled={!!customerInfo}
                 />
               </div>
+              {currentOrderId && (
+                <div className="p-3 bg-blue-50 rounded text-sm text-blue-700 flex items-center">
+                  <CheckCircle className="h-4 w-4 mr-2 text-blue-600" />
+                  Creating bill for Order #{currentOrderId.substring(0, 8)}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -299,7 +401,7 @@ const CreateBill = ({ orderId, customerInfo }) => {
                   <Button 
                     className="w-full mt-4" 
                     onClick={handleGenerateBill}
-                    disabled={selectedItems.length === 0}
+                    disabled={selectedItems.length === 0 || (!customerName && !customerPhone)}
                   >
                     <CheckCircle className="mr-2 h-4 w-4" />
                     Generate Bill
@@ -315,6 +417,50 @@ const CreateBill = ({ orderId, customerInfo }) => {
           </Card>
         </div>
       </div>
+
+      {/* New Customer Dialog */}
+      <Dialog open={newCustomerDialogOpen} onOpenChange={setNewCustomerDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Customer</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="newCustomerName" className="text-right">
+                Name
+              </Label>
+              <Input
+                id="newCustomerName"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                className="col-span-3"
+                placeholder="Customer Name"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="newCustomerPhone" className="text-right">
+                Phone
+              </Label>
+              <Input
+                id="newCustomerPhone"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                className="col-span-3"
+                placeholder="Customer Phone"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNewCustomerDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateNewCustomer}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Add Customer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

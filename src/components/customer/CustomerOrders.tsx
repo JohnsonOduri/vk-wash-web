@@ -3,13 +3,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Star, Clock, Package, User, Receipt, CreditCard } from 'lucide-react';
+import { Star, Clock, Package, User, Receipt, CreditCard, Trash, AlertCircle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { getBillsByCustomerId } from '@/services/laundryItemService';
 import { Bill } from '@/models/LaundryItem';
 import { toast } from '@/hooks/use-toast';
-import { getOrdersByUser, Order } from '@/services/orderService';
+import { getOrdersByUser, Order, deleteOrder } from '@/services/orderService';
 
 interface CustomerOrdersProps {
   customerId: string;
@@ -23,6 +23,8 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
   const [customerBills, setCustomerBills] = useState<Bill[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -96,6 +98,36 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
     setPaymentDialogOpen(false);
     setViewingBill(null);
   };
+
+  const openDeleteDialog = (orderId: string) => {
+    setOrderToDelete(orderId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!orderToDelete) return;
+    
+    try {
+      await deleteOrder(orderToDelete);
+      
+      // Update local state
+      setOrders(orders.filter(order => order.id !== orderToDelete));
+      
+      toast({
+        title: "Order Deleted",
+        description: "Your order has been successfully cancelled."
+      });
+      
+      setDeleteDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to delete order:", error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel your order. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
   
   const getStatusColor = (status: string) => {
     switch(status) {
@@ -103,6 +135,7 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
       case 'picked': return 'text-blue-500';
       case 'processing': return 'text-purple-500';
       case 'delivered': return 'text-green-500';
+      case 'cancelled': return 'text-red-500';
       default: return 'text-gray-500';
     }
   };
@@ -113,6 +146,7 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
       case 'picked': return 'Picked Up';
       case 'processing': return 'Processing';
       case 'delivered': return 'Delivered';
+      case 'cancelled': return 'Cancelled';
       default: return status.charAt(0).toUpperCase() + status.slice(1);
     }
   };
@@ -123,6 +157,7 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
       case 'picked': return 40;
       case 'processing': return 75;
       case 'delivered': return 100;
+      case 'cancelled': return 0;
       default: return 0;
     }
   };
@@ -141,6 +176,7 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
     // Find bill matching this order (if any)
     const orderBill = customerBills.find(bill => bill.orderId === order.id);
     const hasBill = !!orderBill;
+    const canCancel = order.status === 'pending';
     
     return (
       <Card key={order.id} className="mb-4 overflow-hidden transition-all duration-200 hover:shadow-md">
@@ -190,6 +226,16 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
               </Button>
             </div>
           )}
+
+          {order.status === 'cancelled' && order.cancelReason && (
+            <div className="mt-3 p-2 bg-red-50 rounded-md border border-red-100 flex items-start gap-2">
+              <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+              <div>
+                <span className="text-sm font-medium text-red-700 block">Order Cancelled</span>
+                <span className="text-sm text-red-600">{order.cancelReason}</span>
+              </div>
+            </div>
+          )}
           
           {activeOrder === order.id && (
             <div className="mt-4 space-y-3 animate-fade-in">
@@ -225,19 +271,23 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
                 </div>
               )}
               
-              <div className="border-t pt-3">
-                <div className="font-medium mb-1">Items</div>
-                <ul className="list-disc list-inside text-sm text-gray-600">
-                  {order.items.map((item, idx) => (
-                    <li key={idx}>{item.name} x {item.quantity} (₹{item.price.toFixed(2)})</li>
-                  ))}
-                </ul>
-              </div>
+              {order.items && order.items.length > 0 && (
+                <div className="border-t pt-3">
+                  <div className="font-medium mb-1">Items</div>
+                  <ul className="list-disc list-inside text-sm text-gray-600">
+                    {order.items.map((item, idx) => (
+                      <li key={idx}>{item.name} x {item.quantity} (₹{item.price.toFixed(2)})</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               
-              <div className="border-t pt-3 flex justify-between items-center">
-                <div className="font-medium">Total:</div>
-                <div className="text-lg font-bold">₹{order.total.toFixed(2)}</div>
-              </div>
+              {orderBill && (
+                <div className="border-t pt-3 flex justify-between items-center">
+                  <div className="font-medium">Total:</div>
+                  <div className="text-lg font-bold">₹{orderBill.total.toFixed(2)}</div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -251,16 +301,29 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
             {activeOrder === order.id ? 'Hide Details' : 'View Details'}
           </Button>
           
-          {showRateButton && order.status === 'delivered' && (
-            <Button 
-              size="sm" 
-              onClick={() => handleRateDelivery(order.id || '')}
-              className="bg-blue hover:bg-blue-dark"
-            >
-              <Star className="h-4 w-4 mr-2" />
-              Rate Service
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {showRateButton && order.status === 'delivered' && (
+              <Button 
+                size="sm" 
+                onClick={() => handleRateDelivery(order.id || '')}
+                className="bg-blue hover:bg-blue-dark"
+              >
+                <Star className="h-4 w-4 mr-2" />
+                Rate Service
+              </Button>
+            )}
+            
+            {canCancel && (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => openDeleteDialog(order.id || '')}
+              >
+                <Trash className="h-4 w-4 mr-2" />
+                Cancel Order
+              </Button>
+            )}
+          </div>
         </CardFooter>
       </Card>
     );
@@ -305,6 +368,30 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
           </CardContent>
         </Card>
       )}
+
+      {/* Delete Order Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Order</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel this order? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Keep Order
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteOrder}
+            >
+              Yes, Cancel Order
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Bill Viewer Dialog */}
       {viewingBill && (

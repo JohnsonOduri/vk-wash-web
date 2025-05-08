@@ -1,10 +1,12 @@
+
 import { 
   collection, 
   addDoc, 
   getDocs, 
   doc, 
   getDoc, 
-  updateDoc, 
+  updateDoc,
+  deleteDoc, 
   query, 
   where, 
   serverTimestamp,
@@ -24,13 +26,14 @@ export interface Order {
   serviceType: string;
   items: OrderItem[];
   total: number;
-  status: 'pending' | 'picked' | 'processing' | 'delivering' | 'delivered';
+  status: 'pending' | 'picked' | 'processing' | 'delivering' | 'delivered' | 'cancelled';
   pickupAddress: string;
   pickupDate: string;
   specialInstructions?: string;
   createdAt: Timestamp | Date;
   updatedAt: Timestamp | Date;
   deliveryPersonId?: string;
+  cancelReason?: string;
 }
 
 export const createOrder = async (orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'status'>): Promise<string> => {
@@ -127,4 +130,18 @@ export const getDeliveryPersonOrders = async (deliveryPersonId: string): Promise
   });
 
   return orders;
+};
+
+export const deleteOrder = async (orderId: string): Promise<void> => {
+  const docRef = doc(db, 'orders', orderId);
+  await deleteDoc(docRef);
+};
+
+export const rejectOrder = async (orderId: string, reason: string): Promise<void> => {
+  const docRef = doc(db, 'orders', orderId);
+  await updateDoc(docRef, {
+    status: 'cancelled',
+    cancelReason: reason,
+    updatedAt: serverTimestamp()
+  });
 };

@@ -1,3 +1,4 @@
+
 import { Button } from '@/components/ui/button';
 
 const Hero = () => {
@@ -54,10 +55,15 @@ const Hero = () => {
         }, {
           count: '100%',
           label: 'Satisfaction'
-        }].map((stat, index) => <div key={index} className="text-center p-4 rounded-lg bg-white shadow-sm card-hover">
-              <div className="text-3xl font-bold text-blue mb-2">{stat.count}</div>
-              <div className="text-gray-600">{stat.label}</div>
-            </div>)}
+        }].map((stat, index) => (
+          <div 
+            key={index} 
+            className="text-center p-4 rounded-lg bg-white shadow-sm hover:shadow-md hover:scale-105 transition-all duration-200"
+          >
+            <div className="text-3xl font-bold text-blue mb-2">{stat.count}</div>
+            <div className="text-gray-600">{stat.label}</div>
+          </div>
+        ))}
         </div>
       </div>
     </section>
