@@ -2,10 +2,10 @@
 import { FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Control } from 'react-hook-form';
+import { Control as ControlType } from 'react-hook-form';
 
 interface ItemsSelectionProps {
-  control: Control<any>;
+  control: ControlType;
 }
 
 const ItemsSelection = ({ control }: ItemsSelectionProps) => {

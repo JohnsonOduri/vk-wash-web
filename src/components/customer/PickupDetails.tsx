@@ -3,12 +3,12 @@ import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/comp
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Control, FieldErrors, UseFormSetValue } from 'react-hook-form';
+import { Control as ControlType, FieldErrors as FieldErrorsType, UseFormSetValue as UseFormSetValueType } from 'react-hook-form';
 
 interface PickupDetailsProps {
-  control: Control<any>;
-  setValue: UseFormSetValue<any>;
-  errors: FieldErrors<any>;
+  control: ControlType;
+  setValue: UseFormSetValueType<any>;
+  errors: FieldErrorsType;
 }
 
 const PickupDetails = ({ control, setValue, errors }: PickupDetailsProps) => {

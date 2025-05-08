@@ -26,9 +26,9 @@ declare module 'react-hook-form' {
   export const Control: any;
   export type FieldValues = any;
   export type FieldPath<T> = any;
-  export type ControllerProps<T extends FieldValues = FieldValues, TName extends FieldPath<T> = FieldPath<T>> = any;
+  export type ControllerProps<T = any> = any;
   export type FieldErrors = any;
-  export type UseFormSetValue<T extends FieldValues = FieldValues> = any;
+  export type UseFormSetValue<T = any> = any;
   export const Controller: any;
   export const FormProvider: any;
   export const useFormContext: any;
@@ -68,6 +68,6 @@ declare module '@hookform/resolvers/zod' {
 // TanStack React Query
 declare module '@tanstack/react-query' {
   export const QueryClientProvider: any;
-  export const useQueryClient: any;
+  export function useQueryClient(): any;
   export const useQuery: any;
 }

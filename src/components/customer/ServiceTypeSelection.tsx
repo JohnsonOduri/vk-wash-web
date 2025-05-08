@@ -3,7 +3,7 @@ import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/comp
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Shirt, Clock, Star, Check } from 'lucide-react';
-import { Control } from 'react-hook-form';
+import { Control as ControlType } from 'react-hook-form';
 import { z } from 'zod';
 
 const serviceOptions = [
@@ -34,7 +34,7 @@ const serviceOptions = [
 ];
 
 interface ServiceTypeSelectionProps {
-  control: Control<any>;
+  control: ControlType;
 }
 
 const ServiceTypeSelection = ({ control }: ServiceTypeSelectionProps) => {
