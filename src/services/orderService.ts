@@ -9,8 +9,7 @@ import {
   query, 
   where, 
   serverTimestamp,
-  Timestamp,
-  deleteDoc
+  Timestamp
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -26,7 +25,7 @@ export interface Order {
   serviceType: string;
   items: OrderItem[];
   total: number;
-  status: 'pending' | 'picked' | 'processing' | 'delivering' | 'delivered' | 'cancelled';
+  status: 'pending' | 'picked' | 'processing' | 'delivering' | 'delivered';
   pickupAddress: string;
   pickupDate: string;
   specialInstructions?: string;
@@ -80,14 +79,6 @@ export const updateOrderStatus = async (orderId: string, status: Order['status']
   const docRef = doc(db, 'orders', orderId);
   await updateDoc(docRef, {
     status,
-    updatedAt: serverTimestamp()
-  });
-};
-
-export const cancelOrder = async (orderId: string): Promise<void> => {
-  const docRef = doc(db, 'orders', orderId);
-  await updateDoc(docRef, {
-    status: 'cancelled',
     updatedAt: serverTimestamp()
   });
 };

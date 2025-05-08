@@ -12,17 +12,10 @@ import Reviews from "./pages/Reviews";
 import NotFound from "./pages/NotFound";
 import { FirebaseAuthProvider } from "./contexts/FirebaseAuthContext";
 
-// Create a client
-const queryClient = {
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-    },
-  },
-};
+const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient as any}>
+  <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <FirebaseAuthProvider>
         <Toaster />

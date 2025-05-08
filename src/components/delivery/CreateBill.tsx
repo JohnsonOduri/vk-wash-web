@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { CheckCircle, Plus, Minus, Trash } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -111,7 +112,7 @@ const CreateBill = ({ orderId, customerInfo }) => {
     if (selectedItems.length === 0) {
       toast({
         title: 'Empty Bill',
-        description: 'Please add at least one clothing item to the bill',
+        description: 'Please add at least one item to the bill',
         variant: 'destructive'
       });
       return;
@@ -132,7 +133,7 @@ const CreateBill = ({ orderId, customerInfo }) => {
       await createBill(billData);
       toast({
         title: 'Success',
-        description: 'Bill has been generated based on the clothing items and sent to the customer'
+        description: 'Bill has been generated and sent to the customer'
       });
       // Reset form
       setSelectedItems([]);
@@ -191,11 +192,11 @@ const CreateBill = ({ orderId, customerInfo }) => {
 
           <Card>
             <CardHeader>
-              <CardTitle>Select Clothing Items</CardTitle>
+              <CardTitle>Select Items</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <Input
-                placeholder="Search clothing items..."
+                placeholder="Search items..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -217,12 +218,12 @@ const CreateBill = ({ orderId, customerInfo }) => {
                           <div className="font-medium">{item.name}</div>
                           <div className="text-sm text-gray-500">{item.category}</div>
                         </div>
-                        <div className="font-semibold">₹{item.price.toFixed(2)} per unit</div>
+                        <div className="font-semibold">₹{item.price.toFixed(2)}</div>
                       </div>
                     ))
                   ) : (
                     <div className="text-center py-4 text-muted-foreground">
-                      {searchQuery ? 'No clothing items match your search' : 'No clothing items available'}
+                      {searchQuery ? 'No items match your search' : 'No items available'}
                     </div>
                   )}
                 </div>
@@ -244,7 +245,7 @@ const CreateBill = ({ orderId, customerInfo }) => {
                       <div key={item.id} className="flex items-center justify-between py-2 border-b">
                         <div className="flex-1">
                           <div className="font-medium">{item.name}</div>
-                          <div className="text-sm text-gray-500">₹{item.price.toFixed(2)} per unit</div>
+                          <div className="text-sm text-gray-500">₹{item.price.toFixed(2)} each</div>
                         </div>
                         <div className="flex items-center space-x-2">
                           <Button 
@@ -255,7 +256,7 @@ const CreateBill = ({ orderId, customerInfo }) => {
                           >
                             <Minus className="h-4 w-4" />
                           </Button>
-                          <span className="w-8 text-center">{item.quantity} units</span>
+                          <span className="w-8 text-center">{item.quantity}</span>
                           <Button 
                             variant="outline" 
                             size="icon" 
@@ -306,7 +307,7 @@ const CreateBill = ({ orderId, customerInfo }) => {
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                  <p>No clothing items added to bill yet</p>
+                  <p>No items added to bill yet</p>
                   <p className="text-sm mt-2">Click on items from the left panel to add them</p>
                 </div>
               )}

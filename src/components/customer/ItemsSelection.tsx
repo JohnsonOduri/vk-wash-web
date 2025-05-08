@@ -2,18 +2,18 @@
 import { FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Control as ControlType } from 'react-hook-form';
+import { Control } from 'react-hook-form';
 
 interface ItemsSelectionProps {
-  control: ControlType;
+  control: Control<any>;
 }
 
 const ItemsSelection = ({ control }: ItemsSelectionProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Clothing Items</CardTitle>
-        <CardDescription>Enter the number of units for each clothing type</CardDescription>
+        <CardTitle>Items</CardTitle>
+        <CardDescription>Enter the number of items to be serviced</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -22,7 +22,7 @@ const ItemsSelection = ({ control }: ItemsSelectionProps) => {
             name="items.shirts"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Shirts (units)</FormLabel>
+                <FormLabel>Shirts</FormLabel>
                 <FormControl>
                   <Input type="number" min="0" {...field} />
                 </FormControl>
@@ -34,7 +34,7 @@ const ItemsSelection = ({ control }: ItemsSelectionProps) => {
             name="items.pants"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Pants (units)</FormLabel>
+                <FormLabel>Pants</FormLabel>
                 <FormControl>
                   <Input type="number" min="0" {...field} />
                 </FormControl>
@@ -46,7 +46,7 @@ const ItemsSelection = ({ control }: ItemsSelectionProps) => {
             name="items.suits"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Suits (units)</FormLabel>
+                <FormLabel>Suits</FormLabel>
                 <FormControl>
                   <Input type="number" min="0" {...field} />
                 </FormControl>
@@ -58,7 +58,7 @@ const ItemsSelection = ({ control }: ItemsSelectionProps) => {
             name="items.dresses"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Dresses (units)</FormLabel>
+                <FormLabel>Dresses</FormLabel>
                 <FormControl>
                   <Input type="number" min="0" {...field} />
                 </FormControl>
@@ -70,7 +70,7 @@ const ItemsSelection = ({ control }: ItemsSelectionProps) => {
             name="items.other"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Other Items (units)</FormLabel>
+                <FormLabel>Other Items</FormLabel>
                 <FormControl>
                   <Input type="number" min="0" {...field} />
                 </FormControl>

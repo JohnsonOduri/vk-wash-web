@@ -12,14 +12,9 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { User, Package, Clock, CheckCircle, X, Truck, Search, AlertCircle, MapPin } from 'lucide-react';
+import { User, Package, Clock, CheckCircle, X, Truck } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { 
-  getAllPendingOrders, 
-  Order, 
-  updateOrderStatus, 
-  assignDeliveryPerson 
-} from '@/services/orderService';
+import { getAllPendingOrders, Order, updateOrderStatus } from '@/services/orderService';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 
 const DeliveryOrders = () => {
@@ -29,7 +24,6 @@ const DeliveryOrders = () => {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
   const { user } = useFirebaseAuth();
 
   useEffect(() => {
@@ -54,20 +48,11 @@ const DeliveryOrders = () => {
   };
 
   const handleAcceptOrder = async (orderId: string) => {
-    if (!user?.id) {
-      toast({
-        title: "Authentication Required",
-        description: "You need to be logged in to accept orders",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setIsProcessing(true);
     try {
       // Update the order status to "picked" and assign to current delivery person
       await updateOrderStatus(orderId, 'picked');
-      await assignDeliveryPerson(orderId, user.id);
+      // TODO: Implement assignDeliveryPerson in orderService
+      // await assignDeliveryPerson(orderId, user?.id || '');
       
       toast({
         title: "Order Accepted",
@@ -83,8 +68,6 @@ const DeliveryOrders = () => {
         description: "Failed to accept the order",
         variant: "destructive"
       });
-    } finally {
-      setIsProcessing(false);
     }
   };
 
@@ -97,7 +80,6 @@ const DeliveryOrders = () => {
   const handleRejectOrder = async () => {
     if (!selectedOrderId) return;
     
-    setIsProcessing(true);
     try {
       // Instead of deleting, we could mark it as rejected in a real app
       // For now, we'll just remove it from the list
@@ -115,8 +97,6 @@ const DeliveryOrders = () => {
         description: "Failed to reject the order",
         variant: "destructive"
       });
-    } finally {
-      setIsProcessing(false);
     }
   };
 
@@ -159,7 +139,7 @@ const DeliveryOrders = () => {
             onChange={(e) => setFilter(e.target.value)}
             className="pl-10"
           />
-          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+          <Package className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
         </div>
       </div>
 
@@ -184,14 +164,8 @@ const DeliveryOrders = () => {
               <CardContent className="space-y-4">
                 <div>
                   <h4 className="text-sm font-medium text-gray-500">Pickup Details</h4>
-                  <div className="flex items-start mt-1">
-                    <MapPin className="h-4 w-4 mr-2 mt-0.5 text-gray-400" />
-                    <p className="text-sm">{order.pickupAddress}</p>
-                  </div>
-                  <div className="flex items-center mt-1 ml-6">
-                    <Clock className="h-4 w-4 mr-2 text-gray-400" />
-                    <p className="text-sm">{formatDate(order.pickupDate)}</p>
-                  </div>
+                  <p className="text-sm">{order.pickupAddress}</p>
+                  <p className="text-sm">{formatDate(order.pickupDate)}</p>
                 </div>
                 
                 <div>
@@ -221,17 +195,15 @@ const DeliveryOrders = () => {
                   variant="default" 
                   onClick={() => handleAcceptOrder(order.id || '')}
                   className="w-full"
-                  disabled={isProcessing}
                 >
                   <CheckCircle className="mr-2 h-4 w-4" />
-                  {isProcessing && selectedOrderId === order.id ? 'Processing...' : 'Accept'}
+                  Accept
                 </Button>
                 
                 <Button 
                   variant="outline" 
                   onClick={() => openRejectDialog(order.id || '')}
                   className="w-full text-red-600 border-red-200 hover:bg-red-50"
-                  disabled={isProcessing}
                 >
                   <X className="mr-2 h-4 w-4" />
                   Reject
@@ -275,19 +247,15 @@ const DeliveryOrders = () => {
           </div>
           
           <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setRejectDialogOpen(false)} 
-              disabled={isProcessing}
-            >
+            <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>
               Cancel
             </Button>
             <Button 
               variant="destructive" 
               onClick={handleRejectOrder}
-              disabled={!rejectReason.trim() || isProcessing}
+              disabled={!rejectReason.trim()}
             >
-              {isProcessing ? "Processing..." : "Confirm Rejection"}
+              Confirm Rejection
             </Button>
           </DialogFooter>
         </DialogContent>

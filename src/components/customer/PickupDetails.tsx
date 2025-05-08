@@ -2,24 +2,31 @@
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Control as ControlType, FieldErrors as FieldErrorsType, UseFormSetValue as UseFormSetValueType } from 'react-hook-form';
+import { Control, FieldErrors } from 'react-hook-form';
+import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
+import { useEffect } from 'react';
 
 interface PickupDetailsProps {
-  control: ControlType;
-  setValue: UseFormSetValueType<any>;
-  errors: FieldErrorsType;
+  control: Control<any>;
+  setValue: any;
+  errors?: FieldErrors;
 }
 
 const PickupDetails = ({ control, setValue, errors }: PickupDetailsProps) => {
+  const { user } = useFirebaseAuth();
+
+  // Pre-fill the address with the user's saved address
+  useEffect(() => {
+    if (user?.address) {
+      setValue('pickupAddress', user.address);
+    }
+  }, [user, setValue]);
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Pickup Details</CardTitle>
-        <CardDescription>
-          Tell us where and when to pick up your items. 
-          The final bill will be generated after pickup based on the number and type of items.
-        </CardDescription>
+        <CardDescription>Enter details for laundry pickup</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <FormField
@@ -35,7 +42,6 @@ const PickupDetails = ({ control, setValue, errors }: PickupDetailsProps) => {
             </FormItem>
           )}
         />
-        
         <FormField
           control={control}
           name="pickupDate"
@@ -49,7 +55,6 @@ const PickupDetails = ({ control, setValue, errors }: PickupDetailsProps) => {
             </FormItem>
           )}
         />
-        
         <FormField
           control={control}
           name="specialInstructions"
@@ -57,10 +62,7 @@ const PickupDetails = ({ control, setValue, errors }: PickupDetailsProps) => {
             <FormItem>
               <FormLabel>Special Instructions (Optional)</FormLabel>
               <FormControl>
-                <Textarea 
-                  placeholder="Any special instructions for pickup or handling of your items" 
-                  {...field} 
-                />
+                <Input placeholder="Any special instructions for pickup or cleaning" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

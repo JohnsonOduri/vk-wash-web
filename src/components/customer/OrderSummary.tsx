@@ -6,7 +6,7 @@ import { Package } from 'lucide-react';
 interface OrderSummaryProps {
   total: number;
   submitting: boolean;
-  formErrors: boolean;
+  formErrors?: boolean;
 }
 
 const OrderSummary = ({ total, submitting, formErrors }: OrderSummaryProps) => {
@@ -17,11 +17,11 @@ const OrderSummary = ({ total, submitting, formErrors }: OrderSummaryProps) => {
       </CardHeader>
       <CardContent>
         <div className="text-lg font-semibold flex justify-between">
-          <span>Service Base Price:</span>
+          <span>Estimated Total:</span>
           <span>${total.toFixed(2)}</span>
         </div>
         <p className="text-sm text-gray-500 mt-2">
-          Final price will be calculated after pickup when items are counted.
+          Final price may vary based on weight and specific requirements.
         </p>
         {formErrors && (
           <p className="text-sm text-red-500 mt-2">
@@ -33,7 +33,7 @@ const OrderSummary = ({ total, submitting, formErrors }: OrderSummaryProps) => {
         <Button 
           type="submit" 
           className="w-full" 
-          disabled={submitting || formErrors}
+          disabled={submitting || (formErrors ?? false)}
         >
           {submitting ? (
             <>Processing...</>

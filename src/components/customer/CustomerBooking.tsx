@@ -12,7 +12,6 @@ import OrderSummary from '@/components/customer/OrderSummary';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { createOrder } from '@/services/orderService';
 import { useNavigate } from 'react-router-dom';
-import { FieldErrors } from 'react-hook-form';
 
 // Define the schema for the form with validation
 const bookingSchema = z.object({
@@ -26,7 +25,7 @@ const bookingSchema = z.object({
 
 type BookingValues = z.infer<typeof bookingSchema>;
 
-// Service base pricing
+// Service pricing
 const PRICING = {
   Regular: { base: 100 },
   Express: { base: 150 },
@@ -54,12 +53,12 @@ const CustomerBooking: React.FC<CustomerBookingProps> = ({ customerId }) => {
 
   const watchServiceType = form.watch('serviceType');
 
-  // Calculate base price based on service type
-  const calculateBasePrice = () => {
+  // Calculate total price based on service type
+  const calculateTotal = () => {
     return PRICING[watchServiceType].base;
   };
 
-  const basePrice = calculateBasePrice();
+  const total = calculateTotal();
   
   const onSubmit = async (data: BookingValues) => {
     if (!user) {
@@ -74,26 +73,24 @@ const CustomerBooking: React.FC<CustomerBookingProps> = ({ customerId }) => {
     setIsSubmitting(true);
     
     try {
-      // Create a service type entry
-      const serviceEntry = {
-        name: `${data.serviceType} Laundry Service`,
-        price: basePrice,
-        quantity: 1
-      };
+      // Create a simplified items array
+      const items = [
+        { name: `${data.serviceType} Laundry Service`, quantity: 1, price: total }
+      ];
       
       const orderId = await createOrder({
         userId: user.id,
         serviceType: data.serviceType,
-        items: [serviceEntry], // Actual clothing items will be added during processing
-        total: basePrice,
+        items,
+        total,
         pickupAddress: data.pickupAddress,
         pickupDate: data.pickupDate,
         specialInstructions: data.specialInstructions || undefined,
       });
 
       toast({
-        title: 'Service Booked',
-        description: `Your ${data.serviceType} service has been booked for ${data.pickupDate}. Delivery staff will add your clothing items during pickup.`,
+        title: 'Order Placed',
+        description: `Your ${data.serviceType} service has been booked for ${data.pickupDate}!`,
       });
       
       // Navigate to orders tab
@@ -126,7 +123,7 @@ const CustomerBooking: React.FC<CustomerBookingProps> = ({ customerId }) => {
             
             <div>
               <OrderSummary 
-                total={basePrice} 
+                total={total} 
                 submitting={isSubmitting} 
                 formErrors={Object.keys(form.formState.errors).length > 0}
               />
