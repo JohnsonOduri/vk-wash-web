@@ -86,7 +86,7 @@ export const assignDeliveryPerson = async (orderId: string, deliveryPersonId: st
   const docRef = doc(db, 'orders', orderId);
   await updateDoc(docRef, {
     deliveryPersonId,
-    updatedAt: serverTimestamp()
+    updatedAt: serverTimestamp(),
   });
 };
 
@@ -117,14 +117,14 @@ export const getAllPendingOrders = async (): Promise<Order[]> => {
 export const getDeliveryPersonOrders = async (deliveryPersonId: string): Promise<Order[]> => {
   const q = query(collection(db, 'orders'), where('deliveryPersonId', '==', deliveryPersonId));
   const querySnapshot = await getDocs(q);
-  
+
   const orders: Order[] = [];
   querySnapshot.forEach((doc) => {
     orders.push({
       id: doc.id,
-      ...doc.data()
+      ...doc.data(),
     } as Order);
   });
-  
+
   return orders;
 };

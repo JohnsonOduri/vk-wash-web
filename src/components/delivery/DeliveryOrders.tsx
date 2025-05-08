@@ -13,11 +13,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { User, Package, Clock, CheckCircle, X, Truck } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { getAllPendingOrders, Order, updateOrderStatus } from '@/services/orderService';
+import { getAllPendingOrders, Order, updateOrderStatus, assignDeliveryPerson, getDeliveryPersonOrders } from '@/services/orderService';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 
 const DeliveryOrders = () => {
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
+  const [assignedOrders, setAssignedOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -27,6 +28,7 @@ const DeliveryOrders = () => {
 
   useEffect(() => {
     fetchActiveOrders();
+    fetchAssignedOrders();
   }, []);
 
   const fetchActiveOrders = async () => {
@@ -46,26 +48,50 @@ const DeliveryOrders = () => {
     }
   };
 
+  const fetchAssignedOrders = async () => {
+    if (!user) return;
+    try {
+      const orders = await getDeliveryPersonOrders(user.id);
+      setAssignedOrders(orders);
+    } catch (error) {
+      console.error("Failed to fetch assigned orders:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load assigned orders",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleAcceptOrder = async (orderId: string) => {
     try {
-      // Update the order status to "picked" and assign to current delivery person
-      await updateOrderStatus(orderId, 'picked');
-      // TODO: Implement assignDeliveryPerson in orderService
-      // await assignDeliveryPerson(orderId, user?.id || '');
-      
+      if (!user) {
+        toast({
+          title: "Authentication Error",
+          description: "You must be logged in to accept an order.",
+          variant: "destructive",
+        });
+        return;
+      }
+  
+      // Assign the delivery person and update the order status
+      await assignDeliveryPerson(orderId, user.id); // Assign the current user as the delivery person
+      await updateOrderStatus(orderId, 'picked'); // Update the order status to 'picked'
+  
       toast({
         title: "Order Accepted",
-        description: "The order has been assigned to you. You can now pick up and add items to the order."
+        description: "The order has been assigned to you. You can now pick up and add items to the order.",
       });
-      
-      // Remove the order from the active list
-      setActiveOrders(prev => prev.filter(order => order.id !== orderId));
+  
+      // Remove the order from the active list and refresh assigned orders
+      setActiveOrders((prev) => prev.filter((order) => order.id !== orderId));
+      fetchAssignedOrders();
     } catch (error) {
       console.error("Failed to accept order:", error);
       toast({
         title: "Error",
-        description: "Failed to accept the order",
-        variant: "destructive"
+        description: "Failed to accept the order. Please check your permissions.",
+        variant: "destructive",
       });
     }
   };
@@ -222,6 +248,47 @@ const DeliveryOrders = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Assigned Orders Section */}
+      <div>
+        <h2 className="text-2xl font-bold">Assigned My Orders</h2>
+        {assignedOrders.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {assignedOrders.map((order) => (
+              <Card key={order.id} className="hover:shadow-lg transition-all">
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between">
+                    <div>
+                      <CardTitle className="text-lg">Order #{order.id?.substring(0, 8)}</CardTitle>
+                      <CardDescription>{order.serviceType} Service</CardDescription>
+                    </div>
+                    <div className="px-3 py-1 rounded-full text-xs font-medium capitalize bg-blue-100 text-blue-800">
+                      {order.status}
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Pickup Details</h4>
+                    <p className="text-sm">{order.pickupAddress}</p>
+                    <p className="text-sm">{formatDate(order.pickupDate)}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Truck className="h-12 w-12 text-gray-300 mb-4" />
+              <h3 className="text-lg font-medium text-gray-700 mb-1">No Assigned Orders</h3>
+              <p className="text-gray-500 text-center">
+                You currently have no assigned orders.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       {/* Reject Order Dialog */}
       <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>

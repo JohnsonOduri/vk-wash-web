@@ -1,0 +1,75 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // USERS: Authenticated users can read/write their own user document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ORDERS: Secure access for different roles
+    match /orders/{orderId} {
+      // Allow all authenticated users to read orders
+      allow read: if request.auth != null;
+
+      // Allow creating orders if userId matches auth UID
+      allow create: if request.auth != null &&
+        request.resource.data.userId == request.auth.uid;
+
+      // Allow updating orders with role-based conditions
+      allow update: if request.auth != null && (
+        // Delivery person updating an assigned order
+        (request.auth.token.role == 'delivery' &&
+         resource.data.deliveryPersonId == request.auth.uid) ||
+
+        // Delivery person assigning themselves to an unassigned order
+        (request.auth.token.role == 'delivery' &&
+         resource.data.deliveryPersonId == null &&
+         request.resource.data.deliveryPersonId == request.auth.uid) ||
+
+        // Customers updating their own orders
+        resource.data.userId == request.auth.uid ||
+
+        // Admins can update all orders
+        request.auth.token.role == 'admin' ||
+
+        // Delivery person updating the status of assigned orders
+        resource.data.deliveryPersonId == request.auth.uid
+      );
+
+      // Allow listing orders for all authenticated users
+      allow list: if request.auth != null;
+
+      // Allow delete access for admins and delivery for active orders
+      allow delete: if request.auth != null && (
+        request.auth.token.role == 'admin' ||
+        (request.auth.token.role == 'delivery' &&
+         resource.data.status == 'active')
+      );
+    }
+
+    // BILLS: Customers can access their own, admins can access all
+    match /bills/{billId} {
+      allow read, write: if request.auth != null && (
+        resource.data.customerId == request.auth.uid ||
+        request.auth.token.role == 'admin'
+      );
+    }
+
+    // LAUNDRY ITEMS: Read-only access for all authenticated users
+    match /laundryItems/{itemId} {
+      allow read: if request.auth != null;
+    }
+
+    // DELIVERY ITEMS: Only assigned delivery person can read/write
+    match /deliveryItems/{itemId} {
+      allow read, write: if request.auth != null &&
+        resource.data.deliveryPersonId == request.auth.uid;
+    }
+
+    // DEFAULT DENY: Block all other unspecified access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
