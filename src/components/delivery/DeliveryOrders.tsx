@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; // Add this import
 import { 
   Card, 
   CardContent, 
@@ -19,6 +20,8 @@ import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const DeliveryOrders = () => {
+  // Add navigate hook initialization
+  const navigate = useNavigate();
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [assignedOrders, setAssignedOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
