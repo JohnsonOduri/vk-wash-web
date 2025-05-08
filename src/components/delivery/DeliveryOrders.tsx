@@ -1,31 +1,24 @@
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // Add this import
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle,
-  CardFooter
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { User, Package, Clock, CheckCircle, X, Truck } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
-import { getAllPendingOrders, Order, updateOrderStatus, assignDeliveryPerson, getDeliveryPersonOrders, rejectOrder } from '@/services/orderService';
-import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from '@/hooks/use-toast';
+import { 
+  getAllPendingOrders, 
+  getDeliveryPersonOrders, 
+  assignDeliveryPerson, 
+  updateOrderStatus, 
+  rejectOrder,
+  Order 
+} from '@/services/orderService';
+import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
+import PendingOrdersTab from './PendingOrdersTab';
+import AssignedOrdersTab from './AssignedOrdersTab';
+import RejectOrderDialog from './RejectOrderDialog';
 
 const DeliveryOrders = () => {
-  // Add navigate hook initialization
-  const navigate = useNavigate();
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [assignedOrders, setAssignedOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filter, setFilter] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
@@ -132,21 +125,6 @@ const DeliveryOrders = () => {
     }
   };
 
-  const filteredOrders = activeOrders.filter(order => 
-    filter === '' || 
-    (order.id && order.id.includes(filter)) ||
-    (order.serviceType && order.serviceType.toLowerCase().includes(filter.toLowerCase()))
-  );
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
-
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -167,193 +145,25 @@ const DeliveryOrders = () => {
         </TabsList>
         
         <TabsContent value="pending">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold">Active Orders</h2>
-            
-            <div className="relative w-64">
-              <Input
-                type="text"
-                placeholder="Filter by ID or service..."
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                className="pl-10"
-              />
-              <Package className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
-            </div>
-          </div>
-
-          {filteredOrders.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mt-4">
-              {filteredOrders.map(order => (
-                <Card key={order.id} className="hover:shadow-lg transition-all">
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between">
-                      <div>
-                        <CardTitle className="text-lg">Order #{order.id?.substring(0, 8)}</CardTitle>
-                        <CardDescription>
-                          {order.serviceType} Service
-                        </CardDescription>
-                      </div>
-                      <div className="px-3 py-1 rounded-full text-xs font-medium capitalize bg-amber-100 text-amber-800">
-                        {order.status}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  
-                  <CardContent className="space-y-4">
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500">Pickup Details</h4>
-                      <p className="text-sm">{order.pickupAddress}</p>
-                      <p className="text-sm">{formatDate(order.pickupDate)}</p>
-                    </div>
-                    
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500">Order Type</h4>
-                      <p className="text-sm">{order.serviceType} Service</p>
-                      <p className="text-sm text-gray-500 italic">Items to be added after pickup</p>
-                    </div>
-                    
-                    {order.specialInstructions && (
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-500">Instructions</h4>
-                        <p className="text-sm italic">{order.specialInstructions}</p>
-                      </div>
-                    )}
-
-                    <div className="border-t pt-2">
-                      <p className="text-sm text-blue-600">
-                        After accepting, you'll be able to add items and generate a bill.
-                      </p>
-                    </div>
-                  </CardContent>
-                  
-                  <CardFooter className="grid grid-cols-2 gap-2">
-                    <Button 
-                      variant="default" 
-                      onClick={() => handleAcceptOrder(order.id || '')}
-                      className="w-full"
-                    >
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Accept
-                    </Button>
-                    
-                    <Button 
-                      variant="outline" 
-                      onClick={() => openRejectDialog(order.id || '')}
-                      className="w-full text-red-600 border-red-200 hover:bg-red-50"
-                    >
-                      <X className="mr-2 h-4 w-4" />
-                      Reject
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Truck className="h-12 w-12 text-gray-300 mb-4" />
-                <h3 className="text-lg font-medium text-gray-700 mb-1">No Active Orders</h3>
-                <p className="text-gray-500 text-center">
-                  {filter 
-                    ? "No orders match your search criteria" 
-                    : "There are no pending orders at the moment"}
-                </p>
-              </CardContent>
-            </Card>
-          )}
+          <PendingOrdersTab 
+            orders={activeOrders} 
+            onAcceptOrder={handleAcceptOrder}
+            onRejectOrder={openRejectDialog}
+          />
         </TabsContent>
-
+        
         <TabsContent value="assigned">
-          <h2 className="text-2xl font-bold mb-4">My Assigned Orders</h2>
-          {assignedOrders.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {assignedOrders.map((order) => (
-                <Card key={order.id} className="hover:shadow-lg transition-all">
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between">
-                      <div>
-                        <CardTitle className="text-lg">Order #{order.id?.substring(0, 8)}</CardTitle>
-                        <CardDescription>{order.serviceType} Service</CardDescription>
-                      </div>
-                      <div className="px-3 py-1 rounded-full text-xs font-medium capitalize bg-blue-100 text-blue-800">
-                        {order.status}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500">Pickup Details</h4>
-                      <p className="text-sm">{order.pickupAddress}</p>
-                      <p className="text-sm">{order.pickupDate && formatDate(order.pickupDate)}</p>
-                    </div>
-                    {order.specialInstructions && (
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-500">Instructions</h4>
-                        <p className="text-sm italic">{order.specialInstructions}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                  <CardFooter>
-                    <Button 
-                      variant="default" 
-                      onClick={() => navigate('/delivery-dashboard/bill', { state: { orderId: order.id } })}
-                      className="w-full"
-                    >
-                      Create Bill
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Truck className="h-12 w-12 text-gray-300 mb-4" />
-                <h3 className="text-lg font-medium text-gray-700 mb-1">No Assigned Orders</h3>
-                <p className="text-gray-500 text-center">
-                  You currently have no assigned orders.
-                </p>
-              </CardContent>
-            </Card>
-          )}
+          <AssignedOrdersTab orders={assignedOrders} />
         </TabsContent>
       </Tabs>
 
-      {/* Reject Order Dialog */}
-      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reject Order</DialogTitle>
-            <DialogDescription>
-              Please provide a reason for rejecting this order. This will be sent to the customer.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="py-4">
-            <Textarea
-              placeholder="Reason for rejection..."
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              rows={4}
-              className="w-full"
-            />
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleRejectOrder}
-              disabled={!rejectReason.trim()}
-            >
-              Confirm Rejection
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <RejectOrderDialog 
+        isOpen={rejectDialogOpen}
+        onOpenChange={setRejectDialogOpen}
+        rejectReason={rejectReason}
+        setRejectReason={setRejectReason}
+        onConfirm={handleRejectOrder}
+      />
     </div>
   );
 };
