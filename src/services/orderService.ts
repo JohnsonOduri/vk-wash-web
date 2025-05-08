@@ -1,4 +1,3 @@
-
 import { 
   collection, 
   addDoc, 
@@ -92,18 +91,27 @@ export const assignDeliveryPerson = async (orderId: string, deliveryPersonId: st
 };
 
 export const getAllPendingOrders = async (): Promise<Order[]> => {
-  const q = query(collection(db, 'orders'), where('status', '==', 'pending'));
-  const querySnapshot = await getDocs(q);
-  
-  const orders: Order[] = [];
-  querySnapshot.forEach((doc) => {
-    orders.push({
-      id: doc.id,
-      ...doc.data()
-    } as Order);
-  });
-  
-  return orders;
+  try {
+    // Fetch orders with status "pending" or "active"
+    const q = query(
+      collection(db, 'orders'),
+      where('status', 'in', ['pending', 'active'])
+    );
+    const querySnapshot = await getDocs(q);
+
+    const orders: Order[] = [];
+    querySnapshot.forEach((doc) => {
+      orders.push({
+        id: doc.id,
+        ...doc.data()
+      } as Order);
+    });
+
+    return orders;
+  } catch (error) {
+    console.error("Error fetching pending/active orders:", error); // Log the error
+    throw error; // Re-throw the error to handle it in the calling function
+  }
 };
 
 export const getDeliveryPersonOrders = async (deliveryPersonId: string): Promise<Order[]> => {
