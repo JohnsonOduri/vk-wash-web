@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { 
   Card, 
@@ -56,7 +55,7 @@ const DeliveryOrders = () => {
       
       toast({
         title: "Order Accepted",
-        description: "The order has been assigned to you"
+        description: "The order has been assigned to you. You can now pick up and add items to the order."
       });
       
       // Remove the order from the active list
@@ -169,12 +168,9 @@ const DeliveryOrders = () => {
                 </div>
                 
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500">Items</h4>
-                  <ul className="text-sm list-disc list-inside">
-                    {order.items.map((item, index) => (
-                      <li key={index}>{item.name} (x{item.quantity})</li>
-                    ))}
-                  </ul>
+                  <h4 className="text-sm font-medium text-gray-500">Order Type</h4>
+                  <p className="text-sm">{order.serviceType} Service</p>
+                  <p className="text-sm text-gray-500 italic">Items to be added after pickup</p>
                 </div>
                 
                 {order.specialInstructions && (
@@ -184,9 +180,10 @@ const DeliveryOrders = () => {
                   </div>
                 )}
 
-                <div className="flex justify-between pt-2">
-                  <div className="text-sm font-medium">Total Amount:</div>
-                  <div className="font-bold">₹{order.total.toFixed(2)}</div>
+                <div className="border-t pt-2">
+                  <p className="text-sm text-blue-600">
+                    After accepting, you'll be able to add items and generate a bill.
+                  </p>
                 </div>
               </CardContent>
               

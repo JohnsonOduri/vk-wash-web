@@ -4,24 +4,22 @@ import { Button } from '@/components/ui/button';
 import { Package } from 'lucide-react';
 
 interface OrderSummaryProps {
-  total: number;
   submitting: boolean;
   formErrors?: boolean;
 }
 
-const OrderSummary = ({ total, submitting, formErrors }: OrderSummaryProps) => {
+const OrderSummary = ({ submitting, formErrors }: OrderSummaryProps) => {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Order Summary</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="text-lg font-semibold flex justify-between">
-          <span>Estimated Total:</span>
-          <span>${total.toFixed(2)}</span>
-        </div>
         <p className="text-sm text-gray-500 mt-2">
-          Final price may vary based on weight and specific requirements.
+          Final price will be calculated after item assessment and processing.
+        </p>
+        <p className="text-sm text-gray-500 mt-2">
+          Services are priced based on the specific laundry items and quantity.
         </p>
         {formErrors && (
           <p className="text-sm text-red-500 mt-2">

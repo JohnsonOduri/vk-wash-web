@@ -25,13 +25,6 @@ const bookingSchema = z.object({
 
 type BookingValues = z.infer<typeof bookingSchema>;
 
-// Service pricing
-const PRICING = {
-  Regular: { base: 100 },
-  Express: { base: 150 },
-  Premium: { base: 200 },
-};
-
 interface CustomerBookingProps {
   customerId: string;
 }
@@ -52,13 +45,6 @@ const CustomerBooking: React.FC<CustomerBookingProps> = ({ customerId }) => {
   });
 
   const watchServiceType = form.watch('serviceType');
-
-  // Calculate total price based on service type
-  const calculateTotal = () => {
-    return PRICING[watchServiceType].base;
-  };
-
-  const total = calculateTotal();
   
   const onSubmit = async (data: BookingValues) => {
     if (!user) {
@@ -73,16 +59,14 @@ const CustomerBooking: React.FC<CustomerBookingProps> = ({ customerId }) => {
     setIsSubmitting(true);
     
     try {
-      // Create a simplified items array
-      const items = [
-        { name: `${data.serviceType} Laundry Service`, quantity: 1, price: total }
-      ];
+      // Create an empty items array - items will be added by delivery person later
+      const items = [];
       
       const orderId = await createOrder({
         userId: user.id,
         serviceType: data.serviceType,
         items,
-        total,
+        total: 0, // Total will be calculated later by delivery person
         pickupAddress: data.pickupAddress,
         pickupDate: data.pickupDate,
         specialInstructions: data.specialInstructions || undefined,
@@ -123,7 +107,6 @@ const CustomerBooking: React.FC<CustomerBookingProps> = ({ customerId }) => {
             
             <div>
               <OrderSummary 
-                total={total} 
                 submitting={isSubmitting} 
                 formErrors={Object.keys(form.formState.errors).length > 0}
               />

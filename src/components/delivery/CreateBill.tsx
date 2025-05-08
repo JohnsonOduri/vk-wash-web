@@ -218,7 +218,7 @@ const CreateBill = ({ orderId, customerInfo }) => {
                           <div className="font-medium">{item.name}</div>
                           <div className="text-sm text-gray-500">{item.category}</div>
                         </div>
-                        <div className="font-semibold">₹{item.price.toFixed(2)}</div>
+                        <div className="font-semibold">₹{item.price.toFixed(2)} per unit</div>
                       </div>
                     ))
                   ) : (
@@ -245,7 +245,7 @@ const CreateBill = ({ orderId, customerInfo }) => {
                       <div key={item.id} className="flex items-center justify-between py-2 border-b">
                         <div className="flex-1">
                           <div className="font-medium">{item.name}</div>
-                          <div className="text-sm text-gray-500">₹{item.price.toFixed(2)} each</div>
+                          <div className="text-sm text-gray-500">₹{item.price.toFixed(2)} per unit</div>
                         </div>
                         <div className="flex items-center space-x-2">
                           <Button 
@@ -256,7 +256,7 @@ const CreateBill = ({ orderId, customerInfo }) => {
                           >
                             <Minus className="h-4 w-4" />
                           </Button>
-                          <span className="w-8 text-center">{item.quantity}</span>
+                          <span className="w-8 text-center">{item.quantity} units</span>
                           <Button 
                             variant="outline" 
                             size="icon" 
