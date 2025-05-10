@@ -1,8 +1,8 @@
-
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MapPin, Phone, Package, CheckCircle, Image, ArrowRight } from 'lucide-react';
+import { MapPin, Phone, Package, CheckCircle, Image, ArrowRight, Plus } from 'lucide-react';
 
 interface Order {
   id: string;
@@ -25,7 +25,12 @@ interface DeliveryOrderCardProps {
 
 const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage }: DeliveryOrderCardProps) => {
   const [expanded, setExpanded] = useState(false);
+  const navigate = useNavigate(); // Add navigation hook
   
+  const handleCreateBill = () => {
+    navigate('/create-bill', { state: { orderId: order.id } }); // Redirect to Create Bill page
+  };
+
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', {
       month: 'short',
@@ -150,6 +155,17 @@ const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage }: DeliveryOrd
           >
             <Image className="h-4 w-4 mr-2" />
             Upload Image
+          </Button>
+        )}
+
+        {order.status === 'picked' && (
+          <Button 
+            size="sm" 
+            onClick={handleCreateBill} // Add Create Bill button
+            className="flex-1 ml-2 bg-blue-600 text-white"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create Bill
           </Button>
         )}
       </CardFooter>

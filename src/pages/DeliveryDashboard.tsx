@@ -78,7 +78,7 @@ const DeliveryDashboard = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-8">
             <TabsTrigger value="activeOrders">Active Orders</TabsTrigger>
-            <TabsTrigger value="myOrders">My Orders</TabsTrigger>
+
             <TabsTrigger value="items">Manage Items</TabsTrigger>
             <TabsTrigger value="bill">Create Bill</TabsTrigger>
           </TabsList>
