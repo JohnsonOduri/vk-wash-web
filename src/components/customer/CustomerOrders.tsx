@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Star, Clock, Package, User, Receipt, CreditCard, Trash, AlertCircle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getBillsByCustomerId } from '@/services/laundryItemService';
 import { Bill } from '@/models/LaundryItem';
 import { toast } from '@/hooks/use-toast';
@@ -25,6 +26,7 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('current');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -59,8 +61,9 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
     return dateB.getTime() - dateA.getTime();
   });
   
-  const currentOrders = sortedOrders.filter(order => order.status !== 'delivered');
-  const pastOrders = sortedOrders.filter(order => order.status === 'delivered');
+  // Separate current from previous orders
+  const currentOrders = sortedOrders.filter(order => order.status !== 'delivered' && order.status !== 'cancelled');
+  const previousOrders = sortedOrders.filter(order => order.status === 'delivered' || order.status === 'cancelled');
 
   const handleRateDelivery = (orderId: string) => {
     navigate('/reviews', { state: { orderId } });
@@ -342,32 +345,49 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {currentOrders.length > 0 && (
-        <div>
-          <h2 className="text-xl font-bold mb-4">Current Orders</h2>
-          {currentOrders.map(order => renderOrderCard(order))}
-        </div>
-      )}
-      
-      {pastOrders.length > 0 && (
-        <div>
-          <h2 className="text-xl font-bold mb-4">Past Orders</h2>
-          {pastOrders.map(order => renderOrderCard(order, true))}
-        </div>
-      )}
-      
-      {orders.length === 0 && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Package className="h-12 w-12 text-gray-300 mb-4" />
-            <h3 className="text-lg font-medium text-gray-700 mb-1">No Orders Yet</h3>
-            <p className="text-gray-500 text-center mb-4">
-              You haven't placed any orders yet. Start by booking a service!
-            </p>
-            
-          </CardContent>
-        </Card>
-      )}
+      {/* Order tabs for Current/Previous */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList>
+          <TabsTrigger value="current">Current Orders</TabsTrigger>
+          <TabsTrigger value="previous">Previous Orders</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="current" className="mt-6">
+          {currentOrders.length > 0 ? (
+            <div>
+              {currentOrders.map(order => renderOrderCard(order))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Package className="h-12 w-12 text-gray-300 mb-4" />
+                <h3 className="text-lg font-medium text-gray-700 mb-1">No Current Orders</h3>
+                <p className="text-gray-500 text-center mb-4">
+                  You don't have any active orders at the moment. Book a service to get started!
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="previous" className="mt-6">
+          {previousOrders.length > 0 ? (
+            <div>
+              {previousOrders.map(order => renderOrderCard(order, true))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Package className="h-12 w-12 text-gray-300 mb-4" />
+                <h3 className="text-lg font-medium text-gray-700 mb-1">No Previous Orders</h3>
+                <p className="text-gray-500 text-center mb-4">
+                  You don't have any completed or cancelled orders yet.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* Delete Order Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

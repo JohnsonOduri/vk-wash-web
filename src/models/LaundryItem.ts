@@ -1,31 +1,19 @@
 
-// Define all interfaces in a consistent way that matches their usage in the app
-
-export interface OrderItem {
-  id: string;
-  name: string;
-  quantity: number;
-  price: number;
-  total: number;
-  category?: string;
-}
+// For basic type definitions in the laundry management system
 
 export interface LaundryItem {
   id: string;
   name: string;
-  quantity: number;
-  status: 'pending' | 'processing' | 'completed';
-  customerId: string;
+  price: number;
+  category: 'regular' | 'premium' | 'express';
   createdAt: Date;
   updatedAt: Date;
-  price: number;
-  category: string;
+  status?: string;
+  quantity?: number;
+  customerId?: string;
 }
 
-export interface BillItem {
-  id?: string;
-  name: string;
-  price: number;
+export interface OrderItem extends LaundryItem {
   quantity: number;
   total: number;
 }
@@ -33,18 +21,16 @@ export interface BillItem {
 export interface Bill {
   id: string;
   customerId: string;
-  customerName?: string;
-  customerPhone?: string;
-  items: BillItem[];
+  customerName: string;
+  customerPhone: string;
+  date?: Date;
+  createdAt: Date;
+  items: OrderItem[];
   subtotal: number;
   tax: number;
   total: number;
   status: 'pending' | 'paid';
-  createdAt: Date;
-  paymentMethod?: string;
+  paymentMethod?: 'cash' | 'card' | 'upi' | 'google pay' | 'phone pay' | 'paytm' | 'internet banking';
   paymentDate?: Date;
-  date?: Date; // Added for compatibility with existing code
   orderId?: string;
 }
-
-export type LaundryItemStatus = 'pending' | 'processing' | 'completed';

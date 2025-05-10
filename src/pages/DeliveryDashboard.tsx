@@ -10,11 +10,9 @@ import {
   CardTitle 
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogOut, Home, Package, Image, CheckCircle, User } from 'lucide-react';
+import { LogOut, Home, Package } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import DeliveryOrderCard from '@/components/delivery/DeliveryOrderCard';
 import DeliveryOrders from '@/components/delivery/DeliveryOrders';
 import ManageItems from '@/components/delivery/ManageItems';
 import CreateBill from '@/components/delivery/CreateBill';
@@ -78,30 +76,12 @@ const DeliveryDashboard = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-8">
             <TabsTrigger value="activeOrders">Active Orders</TabsTrigger>
-
             <TabsTrigger value="items">Manage Items</TabsTrigger>
             <TabsTrigger value="bill">Create Bill</TabsTrigger>
           </TabsList>
           
           <TabsContent value="activeOrders">
-            <DeliveryOrders />
-          </TabsContent>
-          
-          <TabsContent value="myOrders" className="space-y-6">
-            <div className="mb-8">
-              <h2 className="text-2xl font-bold mb-4">My Assigned Orders</h2>
-              {/* This would be populated with orders assigned to this delivery person */}
-              {/* For now, displaying a placeholder */}
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <Package className="h-12 w-12 text-gray-300 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-700 mb-1">No Orders Assigned</h3>
-                  <p className="text-gray-500 text-center">
-                    You haven't accepted any orders yet
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+            <DeliveryOrders onCreateBill={handleCreateBill} />
           </TabsContent>
           
           <TabsContent value="items">

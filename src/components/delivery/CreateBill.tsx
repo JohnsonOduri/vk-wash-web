@@ -1,17 +1,20 @@
 
 import { useState, useEffect } from 'react';
-import { CheckCircle, Plus, Minus, Trash, UserPlus } from 'lucide-react';
+import { CheckCircle, Plus, Minus, Trash, UserPlus, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LaundryItem, OrderItem } from '@/models/LaundryItem';
 import { getAllLaundryItems, createBill } from '@/services/laundryItemService';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { getOrderById } from '@/services/orderService';
+import { getOrderById, updateOrderStatus } from '@/services/orderService';
+import { createCustomer, checkCustomerExists } from '@/services/customerService';
 
 const CreateBill = ({ orderId, customerInfo }) => {
   const navigate = useNavigate();
@@ -27,6 +30,8 @@ const CreateBill = ({ orderId, customerInfo }) => {
   const [customerPhone, setCustomerPhone] = useState(customerInfo?.customerPhone || '');
   const [customerId, setCustomerId] = useState(customerInfo?.customerId || '');
   const [newCustomerDialogOpen, setNewCustomerDialogOpen] = useState(false);
+  const [customerExistsError, setCustomerExistsError] = useState(false);
+  const [itemCategory, setItemCategory] = useState('regular');
   
   // Use location state if available (from navigation)
   const orderIdFromState = location?.state?.orderId;
@@ -51,9 +56,8 @@ const CreateBill = ({ orderId, customerInfo }) => {
       if (order) {
         // If the order has customer info, use it
         setCustomerId(order.userId || '');
-        // We'll need to fetch customer name and phone from a separate API call in a real app
-        // This is just a placeholder
-        setCustomerName(`Customer #${order.userId?.substring(0, 5)}`);
+        setCustomerName(order.customerName || '');
+        setCustomerPhone(order.customerPhone || '');
         setIsNewCustomer(false);
       }
     } catch (error) {
@@ -142,10 +146,39 @@ const CreateBill = ({ orderId, customerInfo }) => {
   };
 
   const handleOpenNewCustomerDialog = () => {
+    setCustomerExistsError(false);
     setNewCustomerDialogOpen(true);
   };
 
-  const handleCreateNewCustomer = () => {
+  const handleCheckCustomer = async () => {
+    if (!customerPhone) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please provide customer phone number',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      const exists = await checkCustomerExists(customerPhone);
+      if (exists) {
+        setCustomerExistsError(true);
+      } else {
+        // Customer doesn't exist, proceed with creation
+        handleCreateNewCustomer();
+      }
+    } catch (error) {
+      console.error('Error checking customer:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to verify customer information',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleCreateNewCustomer = async () => {
     if (!customerName || !customerPhone) {
       toast({
         title: 'Missing Information',
@@ -155,15 +188,39 @@ const CreateBill = ({ orderId, customerInfo }) => {
       return;
     }
 
-    // In a real app, this would create a customer record in the database
-    // For now, we'll just close the dialog and update the state
-    setIsNewCustomer(true);
+    try {
+      // Create a new customer using the service
+      const newCustomerId = await createCustomer({
+        name: customerName,
+        phone: customerPhone,
+        // Use phone as customer ID as requested
+        id: customerPhone
+      });
+      
+      setCustomerId(customerPhone);
+      setIsNewCustomer(false);
+      setNewCustomerDialogOpen(false);
+      
+      toast({
+        title: 'Customer Added',
+        description: 'New customer has been created successfully'
+      });
+    } catch (error) {
+      console.error('Error creating customer:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create new customer',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleUseExistingCustomer = () => {
+    setIsNewCustomer(false);
     setNewCustomerDialogOpen(false);
     
-    toast({
-      title: 'Customer Added',
-      description: 'New customer details have been saved'
-    });
+    // Reset the error state
+    setCustomerExistsError(false);
   };
 
   const handleGenerateBill = async () => {
@@ -187,7 +244,7 @@ const CreateBill = ({ orderId, customerInfo }) => {
 
     try {
       const billData = {
-        customerId: customerId || 'guest',
+        customerId: customerId || customerPhone || 'guest',
         customerName,
         customerPhone,
         items: selectedItems,
@@ -198,6 +255,12 @@ const CreateBill = ({ orderId, customerInfo }) => {
       };
 
       await createBill(billData);
+      
+      // If we have an order ID, update its status to 'processing'
+      if (currentOrderId) {
+        await updateOrderStatus(currentOrderId, 'processing');
+      }
+      
       toast({
         title: 'Success',
         description: 'Bill has been generated and sent to the customer'
@@ -219,10 +282,14 @@ const CreateBill = ({ orderId, customerInfo }) => {
     }
   };
 
-  const filteredItems = items.filter(item => 
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter items based on search query and selected category
+  const filteredItems = items
+    .filter(item => 
+      (item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+       item.category.toLowerCase().includes(searchQuery.toLowerCase()))
+      &&
+      item.category.toLowerCase() === itemCategory.toLowerCase()
+    );
 
   if (loadingOrder) {
     return (
@@ -303,33 +370,43 @@ const CreateBill = ({ orderId, customerInfo }) => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
               
-              {isLoading ? (
-                <div className="flex justify-center my-4">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                </div>
-              ) : (
-                <div className="max-h-80 overflow-y-auto space-y-2">
-                  {filteredItems.length > 0 ? (
-                    filteredItems.map(item => (
-                      <div 
-                        key={item.id} 
-                        className="flex justify-between items-center p-3 rounded-md border hover:bg-gray-50 cursor-pointer"
-                        onClick={() => addItemToOrder(item)}
-                      >
-                        <div>
-                          <div className="font-medium">{item.name}</div>
-                          <div className="text-sm text-gray-500">{item.category}</div>
-                        </div>
-                        <div className="font-semibold">₹{item.price.toFixed(2)} per unit</div>
-                      </div>
-                    ))
+              <Tabs value={itemCategory} onValueChange={setItemCategory}>
+                <TabsList className="w-full">
+                  <TabsTrigger value="regular" className="flex-1">Regular Items</TabsTrigger>
+                  <TabsTrigger value="premium" className="flex-1">Premium Items</TabsTrigger>
+                  <TabsTrigger value="express" className="flex-1">Express Items</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value={itemCategory} className="mt-4">
+                  {isLoading ? (
+                    <div className="flex justify-center my-4">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    </div>
                   ) : (
-                    <div className="text-center py-4 text-muted-foreground">
-                      {searchQuery ? 'No items match your search' : 'No items available'}
+                    <div className="max-h-80 overflow-y-auto space-y-2">
+                      {filteredItems.length > 0 ? (
+                        filteredItems.map(item => (
+                          <div 
+                            key={item.id} 
+                            className="flex justify-between items-center p-3 rounded-md border hover:bg-gray-50 cursor-pointer"
+                            onClick={() => addItemToOrder(item)}
+                          >
+                            <div>
+                              <div className="font-medium">{item.name}</div>
+                              <div className="text-sm text-gray-500">{item.category}</div>
+                            </div>
+                            <div className="font-semibold">₹{item.price.toFixed(2)} per unit</div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-4 text-muted-foreground">
+                          {searchQuery ? 'No items match your search' : `No ${itemCategory} items available`}
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
-              )}
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </div>
@@ -425,6 +502,22 @@ const CreateBill = ({ orderId, customerInfo }) => {
             <DialogTitle>Add New Customer</DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-4">
+            {customerExistsError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Customer Already Exists</AlertTitle>
+                <AlertDescription>
+                  A customer with this phone number already exists. Use existing customer or try another phone number.
+                </AlertDescription>
+                <Button 
+                  variant="outline"
+                  onClick={handleUseExistingCustomer}
+                  className="mt-2 w-full"
+                >
+                  Use Existing Customer
+                </Button>
+              </Alert>
+            )}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="newCustomerName" className="text-right">
                 Name
@@ -454,7 +547,7 @@ const CreateBill = ({ orderId, customerInfo }) => {
             <Button variant="outline" onClick={() => setNewCustomerDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleCreateNewCustomer}>
+            <Button onClick={handleCheckCustomer}>
               <UserPlus className="h-4 w-4 mr-2" />
               Add Customer
             </Button>

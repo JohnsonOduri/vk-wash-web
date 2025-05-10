@@ -1,8 +1,11 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MapPin, Phone, Package, CheckCircle, Image, ArrowRight, Plus } from 'lucide-react';
+import { updateOrderStatus } from '@/services/orderService';
+import { toast } from '@/hooks/use-toast';
 
 interface Order {
   id: string;
@@ -21,16 +24,13 @@ interface DeliveryOrderCardProps {
   order: Order;
   onUpdateStatus: (orderId: string, newStatus: string) => void;
   onUploadImage: (orderId: string) => void;
+  onCreateBill: (order: Order) => void;
 }
 
-const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage }: DeliveryOrderCardProps) => {
+const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage, onCreateBill }: DeliveryOrderCardProps) => {
   const [expanded, setExpanded] = useState(false);
-  const navigate = useNavigate(); // Add navigation hook
+  const navigate = useNavigate();
   
-  const handleCreateBill = () => {
-    navigate('/create-bill', { state: { orderId: order.id } }); // Redirect to Create Bill page
-  };
-
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', {
       month: 'short',
@@ -55,6 +55,34 @@ const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage }: DeliveryOrd
       case 'Picked': return 'Working';
       case 'Working': return 'Delivered';
       default: return null;
+    }
+  };
+  
+  const handleStatusUpdate = async (newStatus: string) => {
+    try {
+      // Update status first
+      await onUpdateStatus(order.id, newStatus);
+      
+      // If the status is being updated to "Working", it means the bill was created
+      if (newStatus === 'Working') {
+        toast({
+          title: "Order Status Updated",
+          description: "Order moved to processing after bill creation"
+        });
+      } else {
+        toast({
+          title: "Status Updated",
+          description: `Order marked as ${newStatus}`
+        });
+      }
+      
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update order status",
+        variant: "destructive"
+      });
     }
   };
   
@@ -128,7 +156,7 @@ const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage }: DeliveryOrd
         {nextStatus ? (
           <Button 
             size="sm" 
-            onClick={() => onUpdateStatus(order.id, nextStatus)}
+            onClick={() => handleStatusUpdate(nextStatus)}
             className="flex-1 mr-2"
           >
             <CheckCircle className="h-4 w-4 mr-2" />
@@ -158,10 +186,10 @@ const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage }: DeliveryOrd
           </Button>
         )}
 
-        {order.status === 'picked' && (
+        {order.status === 'Picked' && (
           <Button 
             size="sm" 
-            onClick={handleCreateBill} // Add Create Bill button
+            onClick={() => onCreateBill(order)}
             className="flex-1 ml-2 bg-blue-600 text-white"
           >
             <Plus className="h-4 w-4 mr-2" />

@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { 
@@ -15,7 +16,11 @@ import PendingOrdersTab from './PendingOrdersTab';
 import AssignedOrdersTab from './AssignedOrdersTab';
 import RejectOrderDialog from './RejectOrderDialog';
 
-const DeliveryOrders = () => {
+interface DeliveryOrdersProps {
+  onCreateBill?: (order: Order) => void;
+}
+
+const DeliveryOrders = ({ onCreateBill }: DeliveryOrdersProps) => {
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [assignedOrders, setAssignedOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -24,6 +29,7 @@ const DeliveryOrders = () => {
   const [rejectReason, setRejectReason] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
   const { user } = useFirebaseAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchActiveOrders();
@@ -125,6 +131,30 @@ const DeliveryOrders = () => {
     }
   };
 
+  const handleCreateBill = (order: Order) => {
+    if (onCreateBill) {
+      onCreateBill(order);
+    } else {
+      // Fallback to route-based navigation if no callback is provided
+      navigate('/delivery-dashboard/bill', { state: { orderId: order.id } });
+    }
+  };
+
+  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+    try {
+      await updateOrderStatus(orderId, newStatus.toLowerCase());
+      // Refresh assigned orders after status update
+      fetchAssignedOrders();
+    } catch (error) {
+      console.error("Failed to update order status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update the order status",
+        variant: "destructive"
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -153,7 +183,11 @@ const DeliveryOrders = () => {
         </TabsContent>
         
         <TabsContent value="assigned">
-          <AssignedOrdersTab orders={assignedOrders} />
+          <AssignedOrdersTab 
+            orders={assignedOrders} 
+            onUpdateStatus={handleUpdateStatus}
+            onCreateBill={handleCreateBill}
+          />
         </TabsContent>
       </Tabs>
 
