@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -142,7 +141,9 @@ const DeliveryOrders = ({ onCreateBill }: DeliveryOrdersProps) => {
 
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
     try {
-      await updateOrderStatus(orderId, newStatus.toLowerCase());
+      // Cast the string to the appropriate type
+      const typedStatus = newStatus.toLowerCase() as 'pending' | 'picked' | 'processing' | 'delivering' | 'delivered' | 'cancelled';
+      await updateOrderStatus(orderId, typedStatus);
       // Refresh assigned orders after status update
       fetchAssignedOrders();
     } catch (error) {

@@ -4,10 +4,11 @@ import { Truck } from 'lucide-react';
 
 interface EmptyOrdersMessageProps {
   message: string;
+  description?: string;
   filterActive?: boolean;
 }
 
-const EmptyOrdersMessage = ({ message, filterActive = false }: EmptyOrdersMessageProps) => {
+const EmptyOrdersMessage = ({ message, description, filterActive = false }: EmptyOrdersMessageProps) => {
   return (
     <Card>
       <CardContent className="flex flex-col items-center justify-center py-12">
@@ -18,6 +19,11 @@ const EmptyOrdersMessage = ({ message, filterActive = false }: EmptyOrdersMessag
             ? "No orders match your search criteria" 
             : message}
         </p>
+        {description && (
+          <p className="text-gray-400 text-sm text-center mt-1">
+            {description}
+          </p>
+        )}
       </CardContent>
     </Card>
   );

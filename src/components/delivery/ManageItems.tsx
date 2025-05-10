@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +13,11 @@ import { LaundryItem } from '@/models/LaundryItem';
 const ManageItems = () => {
   const [items, setItems] = useState<LaundryItem[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [newItem, setNewItem] = useState({
+  const [newItem, setNewItem] = useState<{
+    name: string;
+    price: number;
+    category: 'regular' | 'premium' | 'express';
+  }>({
     name: '',
     price: 0,
     category: 'regular'
@@ -177,7 +180,7 @@ const ManageItems = () => {
               </Label>
               <Select 
                 value={newItem.category} 
-                onValueChange={(value) => setNewItem({ ...newItem, category: value })}
+                onValueChange={(value: 'regular' | 'premium' | 'express') => setNewItem({ ...newItem, category: value })}
               >
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select a category" />
