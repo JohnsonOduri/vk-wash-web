@@ -83,8 +83,8 @@ const DeliveryOrders = ({ onCreateBill }: DeliveryOrdersProps) => {
       await assignDeliveryPerson(
         orderId, 
         user.id,
-        user.displayName || 'Delivery Staff',
-        user.phoneNumber || 'N/A'
+        user.name || 'Delivery Staff', // Using name instead of displayName
+        user.phone || 'N/A'           // Using phone instead of phoneNumber
       );
       await updateOrderStatus(orderId, 'picked');
   
@@ -144,19 +144,17 @@ const DeliveryOrders = ({ onCreateBill }: DeliveryOrdersProps) => {
     }
   };
 
-  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+  const handleUpdateStatus = async (orderId: string, newStatus: Order['status']) => {
     try {
-      // Cast the string to the appropriate type
-      const typedStatus = newStatus.toLowerCase() as 'pending' | 'picked' | 'processing' | 'ready' | 'delivering' | 'delivered' | 'cancelled';
-      await updateOrderStatus(orderId, typedStatus);
+      await updateOrderStatus(orderId, newStatus);
       
       // Show appropriate message based on status
-      let message = `Order status updated to ${typedStatus}`;
-      if (typedStatus === 'processing') {
+      let message = `Order status updated to ${newStatus}`;
+      if (newStatus === 'processing') {
         message = "Order moved to processing after bill creation";
-      } else if (typedStatus === 'ready') {
+      } else if (newStatus === 'ready') {
         message = "Order is now ready for delivery";
-      } else if (typedStatus === 'delivered') {
+      } else if (newStatus === 'delivered') {
         message = "Order has been marked as delivered";
       }
       

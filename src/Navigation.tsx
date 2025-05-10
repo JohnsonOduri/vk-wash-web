@@ -3,12 +3,12 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { AlignRight, X, LogIn, Star } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { useWindowSize } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
-  const { isMobile } = useWindowSize();
+  const isMobile = useIsMobile();
   const [scrolled, setScrolled] = useState(false);
 
   // Handle scroll events
