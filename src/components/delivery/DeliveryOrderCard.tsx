@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MapPin, Phone, Package, CheckCircle, Image, ArrowRight, Plus } from 'lucide-react';
+import { MapPin, Phone, Package, CheckCircle, Image, ArrowRight, Plus, User, Truck } from 'lucide-react';
 import { updateOrderStatus } from '@/services/orderService';
 import { toast } from '@/hooks/use-toast';
 
@@ -40,42 +40,31 @@ const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage, onCreateBill 
   };
   
   const getStatusColor = (status: string) => {
-    switch(status) {
-      case 'Booked': return 'bg-amber-100 text-amber-700';
-      case 'Picked': return 'bg-blue-100 text-blue-700';
-      case 'Working': return 'bg-purple-100 text-purple-700';
-      case 'Delivered': return 'bg-green-100 text-green-700';
+    switch(status.toLowerCase()) {
+      case 'pending': return 'bg-amber-100 text-amber-700';
+      case 'picked': return 'bg-blue-100 text-blue-700';
+      case 'processing': return 'bg-purple-100 text-purple-700';
+      case 'ready': return 'bg-cyan-100 text-cyan-700';
+      case 'delivering': return 'bg-indigo-100 text-indigo-700';
+      case 'delivered': return 'bg-green-100 text-green-700';
+      case 'cancelled': return 'bg-red-100 text-red-700';
       default: return 'bg-gray-100 text-gray-700';
     }
   };
   
   const getNextStatus = (currentStatus: string) => {
-    switch(currentStatus) {
-      case 'Booked': return 'Picked';
-      case 'Picked': return 'Working';
-      case 'Working': return 'Delivered';
+    switch(currentStatus.toLowerCase()) {
+      case 'picked': return 'Processing';
+      case 'processing': return 'Ready';
+      case 'ready': return 'Delivering';
+      case 'delivering': return 'Delivered';
       default: return null;
     }
   };
   
   const handleStatusUpdate = async (newStatus: string) => {
     try {
-      // Update status first
       await onUpdateStatus(order.id, newStatus);
-      
-      // If the status is being updated to "Working", it means the bill was created
-      if (newStatus === 'Working') {
-        toast({
-          title: "Order Status Updated",
-          description: "Order moved to processing after bill creation"
-        });
-      } else {
-        toast({
-          title: "Status Updated",
-          description: `Order marked as ${newStatus}`
-        });
-      }
-      
     } catch (error) {
       console.error("Error updating status:", error);
       toast({
@@ -95,7 +84,7 @@ const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage, onCreateBill 
           <div>
             <CardTitle className="flex items-center">
               <Package className="h-5 w-5 mr-2 text-blue" />
-              Order #{order.id}
+              Order #{order.id.substring(0, 8)}
             </CardTitle>
             <CardDescription>
               {formatDate(order.createdAt)} • {order.service}
@@ -123,7 +112,7 @@ const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage, onCreateBill 
           <div className="text-sm">
             <span className="font-medium">Customer</span>
             <div className="text-gray-500">
-              ID: {order.customerId} • {order.customerName}
+              <User className="h-3 w-3 inline mr-1" /> {order.customerName}
             </div>
           </div>
           <Button variant="ghost" size="sm" onClick={() => setExpanded(!expanded)}>
@@ -174,7 +163,7 @@ const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage, onCreateBill 
           </Button>
         )}
         
-        {(order.status === 'Delivered' || order.status === 'Working') && (
+        {(['delivered', 'processing', 'ready'].includes(order.status.toLowerCase())) && (
           <Button 
             size="sm" 
             variant="outline"
@@ -186,7 +175,7 @@ const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage, onCreateBill 
           </Button>
         )}
 
-        {order.status === 'Picked' && (
+        {order.status.toLowerCase() === 'picked' && (
           <Button 
             size="sm" 
             onClick={() => onCreateBill(order)}
@@ -194,6 +183,18 @@ const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage, onCreateBill 
           >
             <Plus className="h-4 w-4 mr-2" />
             Create Bill
+          </Button>
+        )}
+
+        {order.status.toLowerCase() === 'ready' && (
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={() => handleStatusUpdate('Delivering')}
+            className="flex-1 ml-2"
+          >
+            <Truck className="h-4 w-4 mr-2" />
+            Start Delivery
           </Button>
         )}
       </CardFooter>

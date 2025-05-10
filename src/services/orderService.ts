@@ -28,13 +28,15 @@ export interface Order {
   serviceType: string;
   items: OrderItem[];
   total: number;
-  status: 'pending' | 'picked' | 'processing' | 'delivering' | 'delivered' | 'cancelled';
+  status: 'pending' | 'picked' | 'processing' | 'ready' | 'delivering' | 'delivered' | 'cancelled';
   pickupAddress: string;
   pickupDate: string;
   specialInstructions?: string;
   createdAt: Timestamp | Date;
   updatedAt: Timestamp | Date;
   deliveryPersonId?: string;
+  deliveryPersonName?: string;
+  deliveryPersonPhone?: string;
   cancelReason?: string;
 }
 
@@ -87,20 +89,22 @@ export const updateOrderStatus = async (orderId: string, status: Order['status']
   });
 };
 
-export const assignDeliveryPerson = async (orderId: string, deliveryPersonId: string): Promise<void> => {
+export const assignDeliveryPerson = async (orderId: string, deliveryPersonId: string, deliveryPersonName: string, deliveryPersonPhone: string): Promise<void> => {
   const docRef = doc(db, 'orders', orderId);
   await updateDoc(docRef, {
     deliveryPersonId,
+    deliveryPersonName,
+    deliveryPersonPhone,
     updatedAt: serverTimestamp(),
   });
 };
 
 export const getAllPendingOrders = async (): Promise<Order[]> => {
   try {
-    // Fetch orders with status "pending" or "active"
+    // Fetch orders with status "pending", "ready"
     const q = query(
       collection(db, 'orders'),
-      where('status', 'in', ['pending', 'active'])
+      where('status', 'in', ['pending', 'ready'])
     );
     const querySnapshot = await getDocs(q);
 
@@ -114,8 +118,8 @@ export const getAllPendingOrders = async (): Promise<Order[]> => {
 
     return orders;
   } catch (error) {
-    console.error("Error fetching pending/active orders:", error); // Log the error
-    throw error; // Re-throw the error to handle it in the calling function
+    console.error("Error fetching pending/ready orders:", error);
+    throw error;
   }
 };
 

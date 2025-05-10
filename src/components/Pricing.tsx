@@ -1,7 +1,9 @@
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const pricingData = [
   {
@@ -18,6 +20,7 @@ const pricingData = [
     popular: false,
     buttonText: '3-4 Day Turnaround',
     image: '/src/components/pictures/basic-wash.jpg',
+    category: 'regular'
   },
   {
     title: 'Premium Wash & Iron',
@@ -33,6 +36,7 @@ const pricingData = [
     popular: true,
     buttonText: '2-3 Day Turnaround',
     image: '/src/components/pictures/premium-wash.jpg',
+    category: 'premium'
   },
   {
     title: 'Express Services',
@@ -48,11 +52,13 @@ const pricingData = [
     popular: false,
     buttonText: '24-Hour Turnaround',
     image: '/src/components/pictures/express-services.jpg',
+    category: 'express'
   }
 ];
 
 const Pricing = () => {
   const [hoveredPlan, setHoveredPlan] = useState<number | null>(null);
+  const navigate = useNavigate();
 
   function scrollToSection(sectionId: string): void {
     const section = document.getElementById(sectionId);
@@ -62,6 +68,10 @@ const Pricing = () => {
       console.error(`Section with ID "${sectionId}" not found.`);
     }
   }
+
+  const handleViewPricing = (category: string) => {
+    navigate(`/item-pricing/${category}`);
+  };
 
   return (
     <section id="pricing" className="section-padding">
@@ -116,8 +126,9 @@ const Pricing = () => {
                   <CardFooter>
                     <Button 
                       className={`w-full ${plan.popular ? 'btn-primary' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`}
+                      onClick={() => handleViewPricing(plan.category)}
                     >
-                      {plan.buttonText}
+                      View {plan.title} Prices
                     </Button>
                   </CardFooter>
                 </div>

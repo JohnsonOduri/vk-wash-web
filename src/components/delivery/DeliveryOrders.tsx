@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -79,8 +80,13 @@ const DeliveryOrders = ({ onCreateBill }: DeliveryOrdersProps) => {
       }
   
       // Assign the delivery person and update the order status
-      await assignDeliveryPerson(orderId, user.id); // Assign the current user as the delivery person
-      await updateOrderStatus(orderId, 'picked'); // Update the order status to 'picked'
+      await assignDeliveryPerson(
+        orderId, 
+        user.id,
+        user.displayName || 'Delivery Staff',
+        user.phoneNumber || 'N/A'
+      );
+      await updateOrderStatus(orderId, 'picked');
   
       toast({
         title: "Order Accepted",
@@ -134,7 +140,6 @@ const DeliveryOrders = ({ onCreateBill }: DeliveryOrdersProps) => {
     if (onCreateBill) {
       onCreateBill(order);
     } else {
-      // Fallback to route-based navigation if no callback is provided
       navigate('/delivery-dashboard/bill', { state: { orderId: order.id } });
     }
   };
@@ -142,8 +147,24 @@ const DeliveryOrders = ({ onCreateBill }: DeliveryOrdersProps) => {
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
     try {
       // Cast the string to the appropriate type
-      const typedStatus = newStatus.toLowerCase() as 'pending' | 'picked' | 'processing' | 'delivering' | 'delivered' | 'cancelled';
+      const typedStatus = newStatus.toLowerCase() as 'pending' | 'picked' | 'processing' | 'ready' | 'delivering' | 'delivered' | 'cancelled';
       await updateOrderStatus(orderId, typedStatus);
+      
+      // Show appropriate message based on status
+      let message = `Order status updated to ${typedStatus}`;
+      if (typedStatus === 'processing') {
+        message = "Order moved to processing after bill creation";
+      } else if (typedStatus === 'ready') {
+        message = "Order is now ready for delivery";
+      } else if (typedStatus === 'delivered') {
+        message = "Order has been marked as delivered";
+      }
+      
+      toast({
+        title: "Status Updated",
+        description: message
+      });
+      
       // Refresh assigned orders after status update
       fetchAssignedOrders();
     } catch (error) {

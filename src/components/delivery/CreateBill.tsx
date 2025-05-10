@@ -28,6 +28,8 @@ const CreateBill = ({ orderId, customerInfo }) => {
   const [isNewCustomer, setIsNewCustomer] = useState(!customerInfo);
   const [customerName, setCustomerName] = useState(customerInfo?.customerName || '');
   const [customerPhone, setCustomerPhone] = useState(customerInfo?.customerPhone || '');
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
   const [customerId, setCustomerId] = useState(customerInfo?.customerId || '');
   const [newCustomerDialogOpen, setNewCustomerDialogOpen] = useState(false);
   const [customerExistsError, setCustomerExistsError] = useState(false);
@@ -36,9 +38,6 @@ const CreateBill = ({ orderId, customerInfo }) => {
   // Use location state if available (from navigation)
   const orderIdFromState = location?.state?.orderId;
   const currentOrderId = orderId || orderIdFromState;
-
-  // Tax rate (10%)
-  const taxRate = 0.10;
 
   useEffect(() => {
     loadLaundryItems();
@@ -137,14 +136,6 @@ const CreateBill = ({ orderId, customerInfo }) => {
     return selectedItems.reduce((sum, item) => sum + item.total, 0);
   };
 
-  const calculateTax = () => {
-    return calculateSubtotal() * taxRate;
-  };
-
-  const calculateTotal = () => {
-    return calculateSubtotal() + calculateTax();
-  };
-
   const handleOpenNewCustomerDialog = () => {
     setCustomerExistsError(false);
     setNewCustomerDialogOpen(true);
@@ -193,6 +184,8 @@ const CreateBill = ({ orderId, customerInfo }) => {
       const newCustomerId = await createCustomer({
         name: customerName,
         phone: customerPhone,
+        email: customerEmail,
+        address: customerAddress,
         // Use phone as customer ID as requested
         id: customerPhone
       });
@@ -249,8 +242,7 @@ const CreateBill = ({ orderId, customerInfo }) => {
         customerPhone,
         items: selectedItems,
         subtotal: calculateSubtotal(),
-        tax: calculateTax(),
-        total: calculateTotal(),
+        total: calculateSubtotal(), // No tax is added
         orderId: currentOrderId || undefined  // Include order ID if available
       };
 
@@ -461,24 +453,15 @@ const CreateBill = ({ orderId, customerInfo }) => {
                   </div>
                   
                   <div className="pt-4 space-y-2">
-                    <div className="flex justify-between">
-                      <span>Subtotal</span>
-                      <span>₹{calculateSubtotal().toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Tax (10%)</span>
-                      <span>₹{calculateTax().toFixed(2)}</span>
-                    </div>
                     <div className="flex justify-between font-bold text-lg pt-2 border-t">
                       <span>Total</span>
-                      <span>₹{calculateTotal().toFixed(2)}</span>
+                      <span>₹{calculateSubtotal().toFixed(2)}</span>
                     </div>
                   </div>
                   
                   <Button 
                     className="w-full mt-4" 
                     onClick={handleGenerateBill}
-                    disabled={selectedItems.length === 0 || (!customerName && !customerPhone)}
                   >
                     <CheckCircle className="mr-2 h-4 w-4" />
                     Generate Bill
@@ -520,7 +503,7 @@ const CreateBill = ({ orderId, customerInfo }) => {
             )}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="newCustomerName" className="text-right">
-                Name
+                Name*
               </Label>
               <Input
                 id="newCustomerName"
@@ -528,11 +511,12 @@ const CreateBill = ({ orderId, customerInfo }) => {
                 onChange={(e) => setCustomerName(e.target.value)}
                 className="col-span-3"
                 placeholder="Customer Name"
+                required
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="newCustomerPhone" className="text-right">
-                Phone
+                Phone*
               </Label>
               <Input
                 id="newCustomerPhone"
@@ -540,6 +524,32 @@ const CreateBill = ({ orderId, customerInfo }) => {
                 onChange={(e) => setCustomerPhone(e.target.value)}
                 className="col-span-3"
                 placeholder="Customer Phone"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="newCustomerEmail" className="text-right">
+                Email
+              </Label>
+              <Input
+                id="newCustomerEmail"
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
+                className="col-span-3"
+                placeholder="Customer Email"
+                type="email"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="newCustomerAddress" className="text-right">
+                Address
+              </Label>
+              <Input
+                id="newCustomerAddress"
+                value={customerAddress}
+                onChange={(e) => setCustomerAddress(e.target.value)}
+                className="col-span-3"
+                placeholder="Customer Address"
               />
             </div>
           </div>

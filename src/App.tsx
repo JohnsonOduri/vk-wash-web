@@ -9,6 +9,7 @@ import Login from "./pages/Login";
 import CustomerDashboard from "./pages/CustomerDashboard";
 import DeliveryDashboard from "./pages/DeliveryDashboard";
 import Reviews from "./pages/Reviews";
+import ItemPricing from "./pages/ItemPricing";
 import NotFound from "./pages/NotFound";
 import { FirebaseAuthProvider } from "./contexts/FirebaseAuthContext";
 
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/customer-dashboard/*" element={<CustomerDashboard />} />
             <Route path="/delivery-dashboard/*" element={<DeliveryDashboard />} />
             <Route path="/reviews" element={<Reviews />} />
+            <Route path="/item-pricing/:category" element={<ItemPricing />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
