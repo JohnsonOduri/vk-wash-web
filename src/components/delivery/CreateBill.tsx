@@ -236,13 +236,15 @@ const CreateBill = ({ orderId, customerInfo }) => {
     }
 
     try {
+      const subtotal = calculateSubtotal();
       const billData = {
         customerId: customerId || customerPhone || 'guest',
         customerName,
         customerPhone,
         items: selectedItems,
-        subtotal: calculateSubtotal(),
-        total: calculateSubtotal(), // No tax is added
+        subtotal: subtotal,
+        tax: 0, // Adding tax property with value 0 since no tax is applied
+        total: subtotal, // Total is same as subtotal since no tax
         orderId: currentOrderId || undefined  // Include order ID if available
       };
 
