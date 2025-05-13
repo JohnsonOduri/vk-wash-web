@@ -64,18 +64,23 @@ const CustomerBooking: React.FC<CustomerBookingProps> = ({ customerId }) => {
 
       // Create an empty items array - items will be added by delivery person later
       const items = [];
-      
-      const orderId = await createOrder({
+
+      // Only include specialInstructions if it is a non-empty string
+      const orderData: any = {
         userId: user.id,
-        customerName, // Include customer name
-        customerPhone, // Include customer phone
+        customerName,
+        customerPhone,
         serviceType: data.serviceType,
         items,
-        total: 0, // Total will be calculated later by delivery person
+        total: 0,
         pickupAddress: data.pickupAddress,
         pickupDate: data.pickupDate,
-        specialInstructions: data.specialInstructions || undefined,
-      });
+      };
+      if (data.specialInstructions && data.specialInstructions.trim() !== '') {
+        orderData.specialInstructions = data.specialInstructions;
+      }
+
+      const orderId = await createOrder(orderData);
 
       toast({
         title: 'Order Placed',

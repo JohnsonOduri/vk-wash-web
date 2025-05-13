@@ -76,7 +76,7 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
     // Find bill in customer bills
     const bill = customerBills.find(bill => bill.id === billId);
     if (bill) {
-      setViewingBill(bill);
+      setViewingBill(bill); // Only show the bill dialog, do not change tab
     } else {
       toast({
         title: "Bill Not Found",
@@ -137,6 +137,7 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
       case 'picked': return 'text-blue-500';
       case 'processing': return 'text-purple-500';
       case 'ready': return 'text-green-500';
+      case 'delivering': return 'text-indigo-500';
       case 'delivered': return 'text-green-500';
       case 'cancelled': return 'text-red-500';
       default: return 'text-gray-500';
@@ -149,6 +150,7 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
       case 'picked': return 'Picked Up';
       case 'processing': return 'Processing';
       case 'ready': return 'Ready'; // Display 'Ready'
+      case 'delivering': return 'Delivering';
       case 'delivered': return 'Delivered';
       case 'cancelled': return 'Cancelled';
       default: return status.charAt(0).toUpperCase() + status.slice(1);
@@ -161,6 +163,7 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
       case 'picked': return 40;
       case 'processing': return 70;
       case 'ready': return 90; // Progress for 'Ready'
+      case 'delivering': return 95;
       case 'delivered': return 100;
       case 'cancelled': return 0;
       default: return 0;
@@ -211,6 +214,7 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
               <span>Booked</span>
               <span>Picked Up</span>
               <span>Processing</span>
+              <span>Ready</span>
               <span>Delivered</span>
             </div>
           </div>
@@ -221,14 +225,14 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
                 <Receipt className="h-4 w-4 mr-2 text-blue-500" />
                 <span className="text-sm font-medium text-blue-700">Bill Ready</span>
               </div>
-              <Button 
+                <Button 
                 size="sm" 
                 variant="outline" 
                 className="text-blue-600 border-blue-200"
                 onClick={() => orderBill && handleViewBill(orderBill.id)}
-              >
+                >
                 View Bill
-              </Button>
+                </Button>
             </div>
           )}
 
@@ -307,7 +311,15 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
                   <div className="font-medium mb-1">Items</div>
                   <ul className="list-disc list-inside text-sm text-gray-600">
                     {order.items.map((item, idx) => (
-                      <li key={idx}>{item.name} x {item.quantity} (₹{item.price.toFixed(2)})</li>
+                      <li key={idx}>
+                        {item.name} x {item.quantity} (
+                          ₹
+                          {typeof item.price === 'number'
+                            ? item.price.toFixed(2)
+                            : "0.00"
+                          }
+                        )
+                      </li>
                     ))}
                   </ul>
                 </div>
@@ -416,6 +428,111 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
             </Card>
           )}
         </TabsContent>
+
+        <TabsContent value="bills" className="mt-6">
+          {customerBills.length > 0 ? (
+            <div>
+              {customerBills.map((bill) => (
+                <Card key={bill.id} className="mb-4">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center">
+                      <Receipt className="h-5 w-5 mr-2 text-blue-500" />
+                      Bill #{bill.id?.slice(0, 8)}
+                    </CardTitle>
+                    <CardDescription>
+                      {bill.createdAt
+                        ? (
+                            bill.createdAt instanceof Date
+                              ? bill.createdAt
+                              : typeof bill.createdAt === 'object' && typeof (bill.createdAt as any).toDate === 'function'
+                                ? (bill.createdAt as any).toDate()
+                                : new Date(bill.createdAt)
+                          ).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })
+                        : 'N/A'}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="mb-2">
+                      <div className="text-sm font-medium mb-2">Items</div>
+                      <ul className="space-y-1">
+                        {bill.items.map((item, idx) => (
+                          <li key={idx} className="flex justify-between text-sm">
+                            <span>{item.name} x {item.quantity}</span>
+                            <span>
+                              ₹
+                              {typeof item.price === 'number'
+                                ? item.price.toFixed(2)
+                                : "0.00"
+                              }
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="border-t pt-2 space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span>Subtotal</span>
+                        <span>
+                          ₹
+                          {typeof bill.subtotal === 'number'
+                            ? bill.subtotal.toFixed(2)
+                            : "0.00"
+                          }
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Tax</span>
+                        <span>
+                          ₹
+                          {typeof bill.tax === 'number'
+                            ? bill.tax.toFixed(2)
+                            : "0.00"
+                          }
+                        </span>
+                      </div>
+                      <div className="flex justify-between font-bold mt-2">
+                        <span>Total</span>
+                        <span>
+                          ₹
+                          {typeof bill.total === 'number'
+                            ? bill.total.toFixed(2)
+                            : "0.00"
+                          }
+                        </span>
+                      </div>
+                    </div>
+                    <div className="pt-2">
+                      <div className="text-sm text-gray-500">Status</div>
+                      <div className={`font-medium ${bill.status === 'paid' ? 'text-green-600' : 'text-amber-600'}`}>
+                        {bill.status === 'paid' ? 'Paid' : 'Pending Payment'}
+                      </div>
+                    </div>
+                    {bill.status === 'paid' && bill.paymentMethod && (
+                      <div>
+                        <div className="text-sm text-gray-500">Payment Method</div>
+                        <div className="font-medium">{bill.paymentMethod}</div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Receipt className="h-12 w-12 text-gray-300 mb-4" />
+                <h3 className="text-lg font-medium text-gray-700 mb-1">No Bills</h3>
+                <p className="text-gray-500 text-center mb-4">
+                  You don't have any bills yet.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
       </Tabs>
 
       {/* Delete Order Confirmation Dialog */}
@@ -474,7 +591,8 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Tax</span>
-                  <span>₹{viewingBill.tax.toFixed(2)}</span>
+                 <span>₹{typeof viewingBill.total === 'number' ? viewingBill.total.toFixed(2) : '0.00'}</span>
+
                 </div>
                 <div className="flex justify-between font-bold mt-2">
                   <span>Total</span>
@@ -553,3 +671,35 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
 };
 
 export default CustomerOrders;
+
+// Example Error Boundary component
+// Place this in a separate file (e.g., src/components/common/ErrorBoundary.tsx) and wrap your CustomerOrders component with it.
+
+import React from 'react';
+
+class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean}> {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error, errorInfo) {
+    // You can log error info here
+    console.error("ErrorBoundary caught an error", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return <div>Something went wrong. Please refresh the page.</div>;
+    }
+    return this.props.children;
+  }
+}
+
+export { ErrorBoundary };
+
+// Usage in your app (e.g., in CustomerDashboard or App.tsx):
+// <ErrorBoundary>
+//   <CustomerOrders customerId={customerId} />
+// </ErrorBoundary>

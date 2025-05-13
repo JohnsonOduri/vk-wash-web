@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,7 @@ import { getBillsByStatus, updateBillPayment } from '@/services/laundryItemServi
 import { Bill } from '@/models/LaundryItem';
 import { format } from 'date-fns';
 import { CreditCard, Check, Phone, User, Calendar } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 const ManagePayments = () => {
   const [bills, setBills] = useState<Bill[]>([]);
@@ -17,6 +17,8 @@ const ManagePayments = () => {
   const [processingPayment, setProcessingPayment] = useState<string | null>(null);
   const [monthlyEarnings, setMonthlyEarnings] = useState(0);
   const [pendingAmount, setPendingAmount] = useState(0);
+  const [viewingBill, setViewingBill] = useState<Bill | null>(null);
+  const [viewingOrder, setViewingOrder] = useState<any | null>(null); // Replace 'any' with your Order type if available
   
   useEffect(() => {
     loadPendingBills();
@@ -99,6 +101,13 @@ const ManagePayments = () => {
     } finally {
       setProcessingPayment(null);
     }
+  };
+
+  const handleViewBill = async (bill: Bill) => {
+    setViewingBill(bill);
+    // Optionally fetch and show order details
+    // const order = await getOrderById(bill.orderId);
+    // setViewingOrder(order);
   };
   
   const filteredBills = bills.filter(bill => 
@@ -199,7 +208,13 @@ const ManagePayments = () => {
                         {bill.createdAt ? format(bill.createdAt, 'dd MMM yyyy') : 'N/A'}
                       </div>
                     </td>
-                    <td className="px-6 py-4 font-semibold">₹{bill.total.toFixed(2)}</td>
+                    <td className="px-6 py-4 font-semibold">
+                      ₹
+                      {typeof bill.total === 'number'
+                        ? bill.total.toFixed(2)
+                        : "0.00"
+                      }
+                    </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {bill.items.length} {bill.items.length === 1 ? 'item' : 'items'}
                     </td>
@@ -222,6 +237,13 @@ const ManagePayments = () => {
                           <CreditCard className="h-4 w-4 mr-1" />
                           UPI
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => handleViewBill(bill)}
+                        >
+                          View Bill
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -231,6 +253,124 @@ const ManagePayments = () => {
           </div>
         )}
       </div>
+
+      {/* Bill Viewer Dialog */}
+      {viewingBill && (
+        <Dialog open={!!viewingBill} onOpenChange={() => setViewingBill(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Bill Details</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="border-b pb-2">
+                <div className="text-sm text-gray-500">Bill ID</div>
+                <div className="font-medium">{viewingBill.id}</div>
+              </div>
+              <div>
+                <div className="text-sm font-medium mb-2">Items</div>
+                <ul className="space-y-2">
+                  {viewingBill.items.map((item, index) => (
+                    <li key={index} className="flex justify-between text-sm">
+                      <span>{item.name} x {item.quantity}</span>
+                      <span>
+                        ₹
+                        {typeof item.price === 'number'
+                          ? item.price.toFixed(2)
+                          : "0.00"
+                        }
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="border-t pt-2 space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span>Subtotal</span>
+                  <span>
+                    ₹
+                    {typeof viewingBill.subtotal === 'number'
+                      ? viewingBill.subtotal.toFixed(2)
+                      : "0.00"
+                    }
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Tax</span>
+                  <span>
+                    ₹
+                    {typeof viewingBill.tax === 'number'
+                      ? viewingBill.tax.toFixed(2)
+                      : "0.00"
+                    }
+                  </span>
+                </div>
+                <div className="flex justify-between font-bold mt-2">
+                  <span>Total</span>
+                  <span>
+                    ₹
+                    {typeof viewingBill.total === 'number'
+                      ? viewingBill.total.toFixed(2)
+                      : "0.00"
+                    }
+                  </span>
+                </div>
+              </div>
+              <div className="pt-2">
+                <div className="text-sm text-gray-500">Status</div>
+                <div className={`font-medium ${viewingBill.status === 'paid' ? 'text-green-600' : 'text-amber-600'}`}>
+                  {viewingBill.status === 'paid' ? 'Paid' : 'Pending Payment'}
+                </div>
+              </div>
+              {viewingBill.status === 'paid' && viewingBill.paymentMethod && (
+                <div>
+                  <div className="text-sm text-gray-500">Payment Method</div>
+                  <div className="font-medium">{viewingBill.paymentMethod}</div>
+                </div>
+              )}
+              {/* See Order Details button */}
+              <div className="pt-2">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    // Compose WhatsApp message with order details
+                    const phone = viewingBill.customerPhone?.replace(/[^0-9]/g, "");
+                    const itemsText = viewingBill.items
+                      .map(
+                        (item) =>
+                          `${item.name} x ${item.quantity} (₹${typeof item.price === 'number' ? item.price.toFixed(2) : "0.00"})`
+                      )
+                      .join("%0A");
+                    const message = `Hello ${viewingBill.customerName},%0AHere are your bill/order details:%0A%0ABill ID: ${viewingBill.id}%0AItems:%0A${itemsText}%0ATotal: ₹${typeof viewingBill.total === 'number' ? viewingBill.total.toFixed(2) : "0.00"}%0AStatus: ${viewingBill.status === 'paid' ? 'Paid' : 'Pending Payment'}`;
+                    const whatsappUrl = `https://wa.me/91${phone}?text=${message}`;
+                    window.open(whatsappUrl, "_blank");
+                  }}
+                >
+                  Share Order Details
+                </Button>
+              </div>
+            </div>
+            <DialogFooter>
+              {/* Optionally add payment actions here */}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Order Details Dialog (optional, implement as needed) */}
+      {/* {viewingOrder && (
+        <Dialog open={!!viewingOrder} onOpenChange={() => setViewingOrder(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Order Details</DialogTitle>
+            </DialogHeader>
+            <div>
+              Order ID: {viewingOrder}
+              {/* Render more order details here */}
+            {/*</div>
+          </DialogContent>
+        </Dialog>
+      )} */}
     </div>
   );
 };

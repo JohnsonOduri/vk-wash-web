@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -85,8 +84,18 @@ const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage, onCreateBill 
         // Bill exists, navigate to bill tab
         navigate('/delivery-dashboard', { state: { activeTab: 'bill', orderId: order.id } });
       } else {
-        // No bill, create one
-        onCreateBill(order);
+        // No bill, navigate to create bill tab with order info
+        navigate('/delivery-dashboard/bill', { 
+          state: { 
+            orderId: order.id, 
+            customerInfo: {
+              customerName: order.customerName,
+              customerPhone: order.customerPhone,
+              customerId: order.customerId,
+              customerAddress: order.address
+            }
+          }
+        });
       }
     } catch (error) {
       console.error("Error checking bill:", error);

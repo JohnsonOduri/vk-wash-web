@@ -21,15 +21,11 @@ const PaymentOptions = [
     description: 'Pay in cash on delivery',
   },
   {
-    id: 'google_pay',
-    name: 'Google Pay',
-    description: 'Pay via Google Pay',
+    id: 'upi',
+    name: 'UPI',
+    description: 'Pay via UPI (Google Pay, PhonePe, etc.)',
   },
-  {
-    id: 'phone_pay',
-    name: 'PhonePe',
-    description: 'Pay via PhonePe',
-  },
+  
 ];
 
 const BillViewer = ({ customerId }) => {

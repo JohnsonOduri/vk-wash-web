@@ -237,32 +237,33 @@ const CreateBill = ({ orderId, customerInfo }) => {
 
     try {
       const subtotal = calculateSubtotal();
-      const billData = {
-        customerId: customerId || customerPhone || 'guest',
+      // Only include orderId if it is defined and not empty
+      const billData: any = {
+        customerId: customerPhone, // Always use phone number as customerId
         customerName,
         customerPhone,
         items: selectedItems,
         subtotal: subtotal,
-        tax: 0, // Adding tax property with value 0 since no tax is applied
-        total: subtotal, // Total is same as subtotal since no tax
-        orderId: currentOrderId || undefined  // Include order ID if available
+        tax: 0,
+        total: subtotal,
       };
+      if (currentOrderId) {
+        billData.orderId = currentOrderId;
+      }
 
       await createBill(billData);
-      
+
       // If we have an order ID, update its status to 'processing'
       if (currentOrderId) {
         await updateOrderStatus(currentOrderId, 'processing');
       }
-      
+
       toast({
         title: 'Success',
         description: 'Bill has been generated and sent to the customer'
       });
-      // Reset form
       setSelectedItems([]);
-      
-      // If we came here with an order, go back to delivery dashboard
+
       if (currentOrderId) {
         navigate('/delivery-dashboard');
       }
