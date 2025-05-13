@@ -216,7 +216,7 @@ export const updateBillPartialPayment = async (
   paymentMethod: 'cash' | 'upi',
   amount: number,
   remainingAmount: number
-) => {
+): Promise<string> => {
   try {
     const billRef = doc(db, 'bills', billId);
     const timestamp = new Date();

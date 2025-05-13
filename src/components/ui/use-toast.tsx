@@ -66,9 +66,10 @@ function useToast() {
   const [toasts, setToasts] = React.useState<ToasterToast[]>([])
 
   React.useEffect(() => {
-    return toastStore.subscribe((state) => {
+    const unsubscribe = toastStore.subscribe((state) => {
       setToasts(state)
     })
+    return unsubscribe
   }, [])
 
   function toast(props: Omit<ToasterToast, "id">) {
