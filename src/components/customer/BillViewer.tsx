@@ -104,23 +104,41 @@ const BillViewer = ({ customerId }) => {
         (bill, idx, arr) => arr.findIndex(b => b.id === bill.id) === idx
       );
 
-      // Sort: pending bills first (latest to oldest), then paid bills (newest to oldest)
-      allBills = [
-        ...allBills
-          .filter(bill => bill.status === 'pending')
-          .sort((a, b) => {
-            const dateA = (a.createdAt || a.date || new Date());
-            const dateB = (b.createdAt || b.date || new Date());
-            return dateB.getTime() - dateA.getTime();
-          }),
-        ...allBills
-          .filter(bill => bill.status !== 'pending')
-          .sort((a, b) => {
-            const dateA = (a.createdAt || a.date || new Date());
-            const dateB = (b.createdAt || b.date || new Date());
-            return dateB.getTime() - dateA.getTime();
-          }).reverse(), // Descending order for paid bills
-      ];
+      // Only display bills made in last 30 days, but always include pending bills (even if older)
+      const now = new Date();
+      const since = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      allBills = allBills.filter(bill => {
+        const billDate = bill.createdAt || bill.date || new Date();
+        return bill.status === 'pending' || billDate >= since;
+      });
+
+      // Sort: pending bills first (latest to oldest), then rest by pickup date (oldest to newest)
+      const pendingBills = allBills
+        .filter(bill => bill.status === 'pending')
+        .sort((a, b) => {
+          const dateA = (a.createdAt || a.date || new Date());
+          const dateB = (b.createdAt || b.date || new Date());
+          return dateB.getTime() - dateA.getTime();
+        });
+
+      // For non-pending bills, sort by pickup date (oldest to newest)
+      // Find pickup date from order if possible, else use bill date
+      const orderMap: Record<string, any> = {};
+      fetchedOrders.forEach(order => {
+        if (order.id) orderMap[order.id] = order;
+      });
+
+      const nonPendingBills = allBills
+        .filter(bill => bill.status !== 'pending')
+        .sort((a, b) => {
+          const orderA = orderMap[a.orderId];
+          const orderB = orderMap[b.orderId];
+          const dateA = orderA?.pickupDate ? new Date(orderA.pickupDate) : (a.createdAt || a.date || new Date());
+          const dateB = orderB?.pickupDate ? new Date(orderB.pickupDate) : (b.createdAt || b.date || new Date());
+          return dateA.getTime() - dateB.getTime();
+        });
+
+      allBills = [...pendingBills, ...nonPendingBills];
 
       setBills(allBills);
       setOrders(fetchedOrders);
