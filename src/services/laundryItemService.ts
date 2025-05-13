@@ -1,4 +1,3 @@
-
 import { 
   collection, 
   addDoc, 
@@ -203,13 +202,30 @@ export const getBillsByStatus = async (status: 'pending' | 'paid' | 'cancelled')
   return bills;
 };
 
-export const updateBillPayment = async (billId: string, paymentMethod: Bill['paymentMethod']): Promise<void> => {
+export const updateBillPayment = async (
+  billId: string,
+  paymentMethod: Bill['paymentMethod'],
+  paidAmount?: number,
+  pendingAmount?: number
+): Promise<void> => {
   const docRef = doc(db, 'bills', billId);
-  await updateDoc(docRef, {
-    status: 'paid',
-    paymentMethod,
-    paymentDate: serverTimestamp()
-  });
+
+  if (typeof paidAmount === 'number' && typeof pendingAmount === 'number') {
+    // Partial payment: update total to pending amount and keep status as pending
+    await updateDoc(docRef, {
+      total: pendingAmount,
+      status: 'pending',
+      paymentMethod,
+      paymentDate: serverTimestamp(),
+    });
+  } else {
+    // Full payment: mark as paid
+    await updateDoc(docRef, {
+      status: 'paid',
+      paymentMethod,
+      paymentDate: serverTimestamp(),
+    });
+  }
 };
 
 export const getBillsByOrderId = async (orderId: string): Promise<Bill | null> => {

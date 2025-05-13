@@ -6,7 +6,7 @@ import { Star, Clock, Package, User, Receipt, CreditCard, Trash, AlertCircle } f
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getBillsByCustomerId } from '@/services/laundryItemService';
+import { getBillsByCustomerId, getBillsByOrderId } from '@/services/laundryItemService';
 import { Bill } from '@/models/LaundryItem';
 import { toast } from '@/hooks/use-toast';
 import { getOrdersByUser, Order, deleteOrder } from '@/services/orderService';
@@ -34,9 +34,26 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
         try {
           const fetchedOrders = await getOrdersByUser(customerId);
           setOrders(fetchedOrders);
-          
-          const bills = await getBillsByCustomerId(customerId);
-          setCustomerBills(bills);
+
+          // Fetch bills by customerId
+          const billsByCustomer = await getBillsByCustomerId(customerId);
+
+          // Fetch bills by orderId for all orders
+          const billsByOrder: Bill[] = [];
+          for (const order of fetchedOrders) {
+            if (order.id) {
+              try {
+                const bill = await getBillsByOrderId(order.id);
+                if (bill) billsByOrder.push(bill);
+              } catch {}
+            }
+          }
+
+          // Merge and deduplicate bills by id
+          const allBills = [...billsByCustomer, ...billsByOrder].filter(
+            (bill, idx, arr) => arr.findIndex(b => b.id === bill.id) === idx
+          );
+          setCustomerBills(allBills);
         } catch (error) {
           console.error("Error fetching data:", error);
           toast({
@@ -225,14 +242,14 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
                 <Receipt className="h-4 w-4 mr-2 text-blue-500" />
                 <span className="text-sm font-medium text-blue-700">Bill Ready</span>
               </div>
-                <Button 
+              <Button 
                 size="sm" 
                 variant="outline" 
                 className="text-blue-600 border-blue-200"
                 onClick={() => orderBill && handleViewBill(orderBill.id)}
-                >
+              >
                 View Bill
-                </Button>
+              </Button>
             </div>
           )}
 
@@ -571,42 +588,61 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
                 <div className="text-sm text-gray-500">Bill ID</div>
                 <div className="font-medium">{viewingBill.id}</div>
               </div>
-              
               <div>
                 <div className="text-sm font-medium mb-2">Items</div>
                 <ul className="space-y-2">
                   {viewingBill.items.map((item, index) => (
                     <li key={index} className="flex justify-between text-sm">
                       <span>{item.name} x {item.quantity}</span>
-                      <span>₹{item.price.toFixed(2)}</span>
+                      <span>
+                        ₹
+                        {typeof item.price === 'number'
+                          ? item.price.toFixed(2)
+                          : "0.00"
+                        }
+                      </span>
                     </li>
                   ))}
                 </ul>
               </div>
-              
               <div className="border-t pt-2 space-y-1">
                 <div className="flex justify-between text-sm">
                   <span>Subtotal</span>
-                  <span>₹{viewingBill.subtotal.toFixed(2)}</span>
+                  <span>
+                    ₹
+                    {typeof viewingBill.subtotal === 'number'
+                      ? viewingBill.subtotal.toFixed(2)
+                      : "0.00"
+                    }
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Tax</span>
-                 <span>₹{typeof viewingBill.total === 'number' ? viewingBill.total.toFixed(2) : '0.00'}</span>
-
+                  <span>
+                    ₹
+                    {typeof viewingBill.tax === 'number'
+                      ? viewingBill.tax.toFixed(2)
+                      : "0.00"
+                    }
+                  </span>
                 </div>
                 <div className="flex justify-between font-bold mt-2">
                   <span>Total</span>
-                  <span>₹{viewingBill.total.toFixed(2)}</span>
+                  <span>
+                    ₹
+                    {typeof viewingBill.total === 'number'
+                      ? viewingBill.total.toFixed(2)
+                      : "0.00"
+                    }
+                  </span>
                 </div>
               </div>
-              
               <div className="pt-2">
                 <div className="text-sm text-gray-500">Status</div>
                 <div className={`font-medium ${viewingBill.status === 'paid' ? 'text-green-600' : 'text-amber-600'}`}>
                   {viewingBill.status === 'paid' ? 'Paid' : 'Pending Payment'}
                 </div>
               </div>
-              
               {viewingBill.status === 'paid' && viewingBill.paymentMethod && (
                 <div>
                   <div className="text-sm text-gray-500">Payment Method</div>
@@ -653,7 +689,7 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
             </Button>
             <Button onClick={() => processPayment("Paytm")} className="flex items-center justify-start">
               <svg viewBox="0 0 24 24" width="24" height="24" className="mr-2">
-                <path d="M24 12c0 6.627-5.373 12-12 12s-12-5.373-12-12 5.373-12 12-12 12 5.373 12 12zm-15.51 5.89c-1.023 0-1.184-.621-1.175-1.198l.012-.624v-8.13l2.596.015-.024 8.51c0 .324.082.645.574.645.185 0 .368-.044.551-.132l.198 1.075c-.194.065-.777.104-.943.104-.722 0-1.13.132-1.607-.132-.198-.131-.315-.329-.315-.527.01-.132.01-.309.133-.375v-.231zm-1.946-8.521h-2.077v-1.444h6.72v1.444h-2.06v7.639h-2.583v-7.639zm15.751.162c-.952 0-1.739.33-2.374.893-.608.535-.953 1.299-.953 2.129v3.535c0 .84.362 1.586.97 2.121.635.562 1.422.892 2.357.892.936 0 1.723-.33 2.357-.892.608-.535.969-1.299.969-2.121v-3.535c0-.83-.361-1.586-.969-2.121-.634-.562-1.421-.901-2.357-.901zm.092 2.231c.432 0 .698.338.698.882v2.792c0 .544-.266.882-.698.882s-.697-.338-.697-.882v-2.792c0-.544.265-.882.697-.882z" />
+                <path d="M24 12c0 6.627-5.373 12-12 12s-12-5.373-12-12 5.373-12 12-12zm-15.51 5.89c-1.023 0-1.184-.621-1.175-1.198l.012-.624v-8.13l2.596.015-.024 8.51c0 .324.082.645.574.645.185 0 .368-.044.551-.132l.198 1.075c-.194.065-.777.104-.943.104-.722 0-1.13.132-1.607-.132-.198-.131-.315-.329-.315-.527.01-.132.01-.309.133-.375v-.231zm-1.946-8.521h-2.077v-1.444h6.72v1.444h-2.06v7.639h-2.583v-7.639zm15.751.162c-.952 0-1.739.33-2.374.893-.608.535-.953 1.299-.953 2.129v3.535c0 .84.362 1.586.97 2.121.635.562 1.422.892 2.357.892.936 0 1.723-.33 2.357-.892.608-.535.969-1.299.969-2.121v-3.535c0-.83-.361-1.586-.969-2.121-.634-.562-1.421-.901-2.357-.901zm.092 2.231c.432 0 .698.338.698.882v2.792c0 .544-.266.882-.698.882s-.697-.338-.697-.882v-2.792c0-.544.265-.882.697-.882z" />
               </svg>
               Paytm
             </Button>

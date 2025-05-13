@@ -11,7 +11,9 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { getBillsByCustomerId, updateBillPayment } from '@/services/laundryItemService';
+import { getBillsByCustomerId, updateBillPayment, getBillsByOrderId } from '@/services/laundryItemService';
+import { getOrdersByUser } from '@/services/orderService';
+import { getOrderById } from '@/services/orderService';
 import { Bill } from '@/models/LaundryItem';
 
 const PaymentOptions = [
@@ -30,6 +32,8 @@ const PaymentOptions = [
 
 const BillViewer = ({ customerId }) => {
   const [bills, setBills] = useState<Bill[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [orderItemsMap, setOrderItemsMap] = useState<Record<string, any[]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
@@ -37,20 +41,95 @@ const BillViewer = ({ customerId }) => {
 
   useEffect(() => {
     if (customerId) {
-      loadBills();
+      loadBillsAndOrders();
     }
   }, [customerId]);
 
-  const loadBills = async () => {
+  const loadBillsAndOrders = async () => {
     setIsLoading(true);
     try {
+      // Fetch all orders for this customer
+      const fetchedOrders = await getOrdersByUser(customerId);
+
+      // Fetch all bills for this customer by userId
       const fetchedBills = await getBillsByCustomerId(customerId);
-      setBills(fetchedBills);
+
+      // Also fetch bills by orderId for all orders (to catch any missed bills)
+      const billsByOrder: Bill[] = [];
+      const itemsMap: Record<string, any[]> = {};
+      for (const order of fetchedOrders) {
+        if (order.id) {
+          try {
+            const bill = await getBillsByOrderId(order.id);
+            if (bill) billsByOrder.push(bill);
+          } catch {}
+          // Map orderId to items for quick lookup (prefer bill items if available, else order items)
+          let billForOrder = null;
+          try {
+            billForOrder = await getBillsByOrderId(order.id);
+          } catch {}
+          if (billForOrder && billForOrder.items && billForOrder.items.length > 0) {
+            itemsMap[order.id] = billForOrder.items;
+          } else {
+            itemsMap[order.id] = order.items || [];
+          }
+        }
+      }
+
+      // Also fetch bills by customer phone number (custom-generated bills)
+      let billsByPhone: Bill[] = [];
+      if (fetchedOrders.length > 0) {
+        // Try to get the phone numbers from orders
+        const phoneNumbers = [
+          ...new Set(
+            fetchedOrders
+              .map(order => order.customerPhone)
+              .filter(Boolean)
+          ),
+        ];
+        for (const phone of phoneNumbers) {
+          if (phone && phone !== customerId) {
+            try {
+              const phoneBills = await getBillsByCustomerId(phone);
+              if (phoneBills && phoneBills.length > 0) {
+                billsByPhone = billsByPhone.concat(phoneBills);
+              }
+            } catch {}
+          }
+        }
+      }
+
+      // Merge and deduplicate bills by id
+      let allBills = [...fetchedBills, ...billsByOrder, ...billsByPhone].filter(
+        (bill, idx, arr) => arr.findIndex(b => b.id === bill.id) === idx
+      );
+
+      // Sort: pending bills first (latest to oldest), then paid bills (newest to oldest)
+      allBills = [
+        ...allBills
+          .filter(bill => bill.status === 'pending')
+          .sort((a, b) => {
+            const dateA = (a.createdAt || a.date || new Date());
+            const dateB = (b.createdAt || b.date || new Date());
+            return dateB.getTime() - dateA.getTime();
+          }),
+        ...allBills
+          .filter(bill => bill.status !== 'pending')
+          .sort((a, b) => {
+            const dateA = (a.createdAt || a.date || new Date());
+            const dateB = (b.createdAt || b.date || new Date());
+            return dateB.getTime() - dateA.getTime();
+          }).reverse(), // Descending order for paid bills
+      ];
+
+      setBills(allBills);
+      setOrders(fetchedOrders);
+      setOrderItemsMap(itemsMap);
     } catch (error) {
-      console.error('Error loading bills:', error);
+      console.error('Error loading bills and orders:', error);
       toast({
         title: 'Error',
-        description: 'Failed to load bills',
+        description: 'Failed to load bills and orders',
         variant: 'destructive'
       });
     } finally {
@@ -73,7 +152,7 @@ const BillViewer = ({ customerId }) => {
         description: `Payment of ₹${selectedBill.total.toFixed(2)} completed via ${getPaymentMethodName(selectedPaymentMethod)}`
       });
       setIsPaymentDialogOpen(false);
-      loadBills(); // Refresh bills to show updated status
+      loadBillsAndOrders(); // Refresh bills to show updated status
     } catch (error) {
       console.error('Payment error:', error);
       toast({
@@ -110,79 +189,109 @@ const BillViewer = ({ customerId }) => {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Your Bills</h2>
-      
-      {bills.length > 0 ? (
+      {orders.length > 0 ? (
         <div className="space-y-4">
-          {bills.map(bill => (
-            <Card key={bill.id} className={`hover:shadow-md transition-shadow ${
-              bill.status === 'paid' ? 'border-green-500' : ''
-            }`}>
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-lg">Order #{bill.id.substring(0, 8)}</CardTitle>
-                    <p className="text-sm text-gray-500">{formatDate(bill.date)}</p>
+          {orders.map(order => {
+            // Find bill for this order
+            const bill = bills.find(b => b.orderId === order.id);
+            // Get items for this order (prefer bill items if available, else order items)
+            const orderItems = orderItemsMap[order.id] || [];
+            return (
+              <Card key={order.id} className={`hover:shadow-md transition-shadow ${bill && bill.status === 'paid' ? 'border-green-500' : ''}`}>
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-lg">Order #{order.id?.substring(0, 8)}</CardTitle>
+                      <p className="text-sm text-gray-500">
+                        {order.createdAt
+                          ? (order.createdAt instanceof Date
+                              ? order.createdAt
+                              : typeof order.createdAt === 'object' && typeof order.createdAt.toDate === 'function'
+                                ? order.createdAt.toDate()
+                                : new Date(order.createdAt)
+                            ).toLocaleString('en-US', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })
+                          : 'N/A'}
+                      </p>
+                    </div>
+                    <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      bill
+                        ? (bill.status === 'paid'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-yellow-100 text-yellow-800')
+                        : 'bg-gray-100 text-gray-700'
+                    }`}>
+                      {bill
+                        ? (bill.status === 'paid' ? 'Paid' : 'Pending')
+                        : 'No Bill'}
+                    </div>
                   </div>
-                  <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    bill.status === 'paid' 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {bill.status === 'paid' ? 'Paid' : 'Pending'}
+                </CardHeader>
+                <CardContent className="divide-y">
+                  <div className="pb-4">
+                    <h4 className="text-sm font-medium mb-2">Order Items</h4>
+                    <div className="space-y-1">
+                      {orderItems && orderItems.length > 0 ? (
+                        orderItems.map((item, idx) => (
+                          <div key={idx} className="flex justify-between text-sm">
+                            <span>{item.name} x{item.quantity}</span>
+                            <span>
+                              ₹{typeof item.price === 'number'
+                                ? item.price.toFixed(2)
+                                : typeof item.total === 'number'
+                                  ? item.total.toFixed(2)
+                                  : "0.00"}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <span className="text-gray-400">No items added yet</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="divide-y">
-                <div className="pb-4">
-                  <h4 className="text-sm font-medium mb-2">Items</h4>
-                  <div className="space-y-1">
-                    {bill.items.map((item, index) => (
-                      <div key={index} className="flex justify-between text-sm">
-                        <span>{item.name} x{item.quantity}</span>
-                        <span>₹{typeof item.total === 'number' ? item.total.toFixed(2) : "₹0.00"}</span> {/* Safely format item.total */}
+                  {bill && (
+                    <div className="py-3 space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span>Subtotal</span>
+                        <span>₹{typeof bill.subtotal === 'number' ? bill.subtotal.toFixed(2) : "₹0.00"}</span>
                       </div>
-                    ))}
-                  </div>
-                </div>
-                
-                <div className="py-3 space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span>Subtotal</span>
-                    <span>₹{typeof bill.subtotal === 'number' ? bill.subtotal.toFixed(2) : "₹0.00"}</span> {/* Safely format bill.subtotal */}
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Tax</span>
-                    <span>₹{typeof bill.tax === 'number' ? bill.tax.toFixed(2) : "₹0.00"}</span> {/* Safely format bill.tax */}
-                  </div>
-                  <div className="flex justify-between font-medium">
-                    <span>Total</span>
-                    <span>₹{typeof bill.total === 'number' ? bill.total.toFixed(2) : "₹0.00"}</span> {/* Safely format bill.total */}
-                  </div>
-                </div>
-                
-                {bill.paymentMethod && (
+                      <div className="flex justify-between text-sm">
+                        <span>Tax</span>
+                        <span>₹{typeof bill.tax === 'number' ? bill.tax.toFixed(2) : "₹0.00"}</span>
+                      </div>
+                      <div className="flex justify-between font-medium">
+                        <span>Total</span>
+                        <span>₹{typeof bill.total === 'number' ? bill.total.toFixed(2) : "₹0.00"}</span>
+                      </div>
+                    </div>
+                  )}
                   <div className="pt-3 text-sm text-gray-600">
-                    <p>Paid via {getPaymentMethodName(bill.paymentMethod)}</p>
-                    {bill.paymentDate && <p>Date: {formatDate(bill.paymentDate)}</p>}
+                    <p>Service: {order.serviceType}</p>
+                    <p>Status: {order.status}</p>
                   </div>
-                )}
-              </CardContent>
-              
-              <CardFooter className="pt-2 pb-4">
-                {bill.status === 'pending' ? (
-                  <Button className="w-full" onClick={() => handlePaymentClick(bill)}>Pay Now</Button>
-                ) : (
-                  <Button className="w-full" variant="outline" disabled>Paid</Button>
-                )}
-              </CardFooter>
-            </Card>
-          ))}
+                </CardContent>
+                <CardFooter className="pt-2 pb-4">
+                  {bill && bill.status === 'pending' ? (
+                    <Button className="w-full" onClick={() => handlePaymentClick(bill)}>Pay Now</Button>
+                  ) : bill && bill.status === 'paid' ? (
+                    <Button className="w-full" variant="outline" disabled>Paid</Button>
+                  ) : (
+                    <Button className="w-full" variant="outline" disabled>No Bill</Button>
+                  )}
+                </CardFooter>
+              </Card>
+            );
+          })}
         </div>
       ) : (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
-            <p>You don't have any bills yet</p>
+            <p>You don't have any orders yet</p>
           </CardContent>
         </Card>
       )}
