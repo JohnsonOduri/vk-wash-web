@@ -125,7 +125,6 @@ import * as ToastPrimitives from "@radix-ui/react-toast"
 
 export { 
   useToast, 
-  toast, 
   type ToastProps,
   type ToastActionElement,
 }
@@ -136,3 +135,4 @@ function toast(props: Omit<ToasterToast, "id">) {
   return toast(props)
 }
 
+export { toast }
