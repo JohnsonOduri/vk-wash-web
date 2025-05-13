@@ -10,6 +10,7 @@ import { getBillsByCustomerId, getBillsByOrderId } from '@/services/laundryItemS
 import { Bill } from '@/models/LaundryItem';
 import { toast } from '@/hooks/use-toast';
 import { getOrdersByUser, Order, deleteOrder } from '@/services/orderService';
+import AddReviewDialog from './AddReviewDialog';
 
 interface CustomerOrdersProps {
   customerId: string;
@@ -26,6 +27,8 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('current');
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [reviewOrderId, setReviewOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -82,7 +85,8 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
   const previousOrders = sortedOrders.filter(order => order.status === 'delivered' || order.status === 'cancelled');
 
   const handleRateDelivery = (orderId: string) => {
-    navigate('/reviews', { state: { orderId } });
+    setReviewOrderId(orderId);
+    setReviewDialogOpen(true);
   };
   
   const toggleOrderDetails = (orderId: string) => {
@@ -702,6 +706,14 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AddReviewDialog
+        open={reviewDialogOpen}
+        onClose={() => setReviewDialogOpen(false)}
+        orderId={reviewOrderId || ''}
+        userId={customerId}
+        userName={orders.find(o => o.id === reviewOrderId)?.customerName || ''}
+      />
     </div>
   );
 };

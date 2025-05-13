@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Menu, X, LogIn, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -66,7 +65,8 @@ const Navigation = () => {
     { name: 'Services', href: '#services', onClick: () => scrollToSection('services') },
     { name: 'Pricing', href: '#pricing', onClick: () => scrollToSection('pricing') },
     { name: 'About', href: '#about', onClick: () => scrollToSection('about') },
-    { name: 'Contact', href: '#contact', onClick: () => scrollToSection('contact') }
+    { name: 'Contact', href: '#contact', onClick: () => scrollToSection('contact') },
+    { name: 'Reviews', href: '/reviews', onClick: handleReviewsClick }
   ];
   
   // Function to scroll to sections on the main page
