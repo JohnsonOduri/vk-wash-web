@@ -1,4 +1,3 @@
-
 import { 
   collection, 
   addDoc, 
@@ -248,4 +247,22 @@ export const addOrderReview = async (orderId: string, reviewId: string, rating: 
     rating,
     updatedAt: serverTimestamp()
   });
+};
+
+// Add this function to get bills by order ID
+export const getBillsByOrderId = async (orderId: string): Promise<any | null> => {
+  const q = query(collection(db, 'bills'), where('orderId', '==', orderId));
+  const querySnapshot = await getDocs(q);
+  
+  if (querySnapshot.empty) {
+    return null;
+  }
+  
+  const doc = querySnapshot.docs[0];
+  const data = doc.data();
+  
+  return {
+    id: doc.id,
+    ...data
+  };
 };
