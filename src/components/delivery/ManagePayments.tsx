@@ -6,10 +6,31 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getBillsByStatus, updateBillPayment } from '@/services/laundryItemService';
-import { Bill } from '@/models/LaundryItem';
 import { format } from 'date-fns';
 import { CreditCard, Check, Phone, User, Calendar } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+
+export interface Payment {
+  amount: number;
+  method: 'cash' | 'upi' | string;
+  date: Date;
+}
+
+export interface Bill {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  items: any[];
+  subtotal: number;
+  tax: number;
+  total: number;
+  status: 'pending' | 'paid';
+  paymentMethod?: string;
+  paymentDate?: Date;
+  createdAt?: Date;
+  date?: Date;
+  payments?: Payment[]; // Add this line to support payments array
+}
 
 const ManagePayments = () => {
   const [bills, setBills] = useState<Bill[]>([]);
@@ -45,10 +66,46 @@ const ManagePayments = () => {
         return dateA.getTime() - dateB.getTime();
       });
       
-      setBills(pendingBills);
+      setBills(
+        pendingBills
+          .filter((b: any) => !!b.id)
+          .map((b: any) => ({
+            id: b.id ?? '',
+            customerName: b.customerName ?? '',
+            customerPhone: b.customerPhone ?? '',
+            items: b.items ?? [],
+            subtotal: b.subtotal ?? 0,
+            tax: b.tax ?? 0,
+            total: b.total ?? 0,
+            status: b.status ?? 'pending',
+            paymentMethod: b.paymentMethod,
+            paymentDate: b.paymentDate,
+            createdAt: b.createdAt,
+            date: b.date,
+            payments: b.payments,
+          }))
+      );
       
       // Calculate metrics
-      calculateMetrics(pendingBills);
+      calculateMetrics(
+        pendingBills
+          .filter((b: any) => !!b.id)
+          .map((b: any) => ({
+            id: b.id ?? '',
+            customerName: b.customerName ?? '',
+            customerPhone: b.customerPhone ?? '',
+            items: b.items ?? [],
+            subtotal: b.subtotal ?? 0,
+            tax: b.tax ?? 0,
+            total: b.total ?? 0,
+            status: b.status ?? 'pending',
+            paymentMethod: b.paymentMethod,
+            paymentDate: b.paymentDate,
+            createdAt: b.createdAt,
+            date: b.date,
+            payments: b.payments,
+          }))
+      );
     } catch (error) {
       console.error('Error loading bills:', error);
       toast({
@@ -74,7 +131,23 @@ const ManagePayments = () => {
         // Fetch both paid and pending bills and merge them
         const paid = await getBillsByStatus('paid');
         const pending = await getBillsByStatus('pending');
-        all = [...paid, ...pending];
+        all = [...paid, ...pending]
+          .filter((b: any) => !!b.id)
+          .map((b: any) => ({
+            id: b.id ?? '',
+            customerName: b.customerName ?? '',
+            customerPhone: b.customerPhone ?? '',
+            items: b.items ?? [],
+            subtotal: b.subtotal ?? 0,
+            tax: b.tax ?? 0,
+            total: b.total ?? 0,
+            status: b.status ?? 'pending',
+            paymentMethod: b.paymentMethod,
+            paymentDate: b.paymentDate,
+            createdAt: b.createdAt,
+            date: b.date,
+            payments: b.payments,
+          }));
       } catch {
         all = [];
       }
@@ -102,19 +175,35 @@ const ManagePayments = () => {
       // Get all bills for the current month
       const now = new Date();
       const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      
+
       const paidBills = await getBillsByStatus('paid');
-      
+      // Also get partial payments from pending bills
+      let partialPayments = 0;
+      for (const bill of pendingBills) {
+        if (Array.isArray(bill.payments)) {
+          for (const payment of bill.payments) {
+            // Only count payments made this month
+            let paymentDate: Date | undefined;
+            if (payment.date instanceof Date) {
+              paymentDate = payment.date;
+            }
+            if (paymentDate && paymentDate >= firstDayOfMonth) {
+              partialPayments += typeof payment.amount === 'number' ? payment.amount : 0;
+            }
+          }
+        }
+      }
+
       const thisMonthPaidBills = paidBills.filter(bill => {
         const billDate = bill.paymentDate || bill.createdAt || bill.date;
         return billDate && billDate >= firstDayOfMonth;
       });
-      
-      // Calculate earnings
-      const earnings = thisMonthPaidBills.reduce((sum, bill) => sum + bill.total, 0);
+
+      // Calculate earnings: paid bills + partial payments from pending bills
+      const earnings = thisMonthPaidBills.reduce((sum, bill) => sum + bill.total, 0) + partialPayments;
       setMonthlyEarnings(earnings);
-      
-      // Calculate pending amount
+
+      // Calculate pending amount (just sum of pending bills' total)
       const pending = pendingBills.reduce((sum, bill) => sum + bill.total, 0);
       setPendingAmount(pending);
     } catch (error) {
