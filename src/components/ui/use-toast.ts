@@ -35,6 +35,10 @@ const toastVariants = cva(
   }
 )
 
+// Import cn function from utils
+import { cn } from "@/lib/utils"
+import * as ToastPrimitives from "@radix-ui/react-toast"
+
 const ToastAction = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Action>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Action>
@@ -118,10 +122,6 @@ function createStore<T>(initialState: T) {
     },
   }
 }
-
-// Import cn function from utils
-import { cn } from "@/lib/utils"
-import * as ToastPrimitives from "@radix-ui/react-toast"
 
 export { 
   useToast, 
