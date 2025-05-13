@@ -1,5 +1,9 @@
 
 import * as React from "react"
+import * as ToastPrimitives from "@radix-ui/react-toast"
+import { cva, type VariantProps } from "class-variance-authority"
+import { cn } from "@/lib/utils"
+
 import {
   Toast,
   ToastClose,
@@ -8,7 +12,6 @@ import {
   ToastTitle,
   ToastViewport,
 } from "@/components/ui/toast"
-import { cva, type VariantProps } from "class-variance-authority"
 
 const TOAST_LIMIT = 1
 const TOAST_REMOVE_DELAY = 1000000
@@ -34,10 +37,6 @@ const toastVariants = cva(
     },
   }
 )
-
-// Import cn function from utils
-import { cn } from "@/lib/utils"
-import * as ToastPrimitives from "@radix-ui/react-toast"
 
 const ToastAction = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Action>,
