@@ -213,18 +213,28 @@ export const updateBillPayment = async (billId: string, paymentMethod: Bill['pay
 
 export const updateBillPartialPayment = async (
   billId: string, 
-  paymentMethod: Bill['paymentMethod'],
-  amountPaid: number,
+  paymentMethod: 'cash' | 'upi',
+  amount: number,
   remainingAmount: number
-): Promise<void> => {
-  const docRef = doc(db, 'bills', billId);
-  await updateDoc(docRef, {
-    total: remainingAmount,
-    partialPayment: true,
-    lastPaymentMethod: paymentMethod,
-    lastPaymentAmount: amountPaid,
-    lastPaymentDate: serverTimestamp()
-  });
+) => {
+  try {
+    const billRef = doc(db, 'bills', billId);
+    const timestamp = new Date();
+    
+    // Update the bill but keep it pending with new remaining amount
+    await updateDoc(billRef, {
+      lastPartialPayment: timestamp,
+      partialPaymentMethod: paymentMethod,
+      partialPaymentAmount: amount,
+      total: remainingAmount, // Update the outstanding amount
+      // We don't change status to paid since there's remaining amount
+    });
+    
+    return billId;
+  } catch (error) {
+    console.error('Error updating bill payment:', error);
+    throw error;
+  }
 };
 
 export const getAllBills = async (): Promise<Bill[]> => {

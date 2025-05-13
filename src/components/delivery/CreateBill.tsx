@@ -187,8 +187,7 @@ const CreateBill = ({ orderId, customerInfo }) => {
         email: customerEmail,
         address: customerAddress,
         // Use phone as customer ID
-        id: customerPhone,
-        password: customerPhone // Set password same as phone number
+        id: customerPhone
       });
       
       setCustomerId(customerPhone);
