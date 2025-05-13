@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +11,7 @@ import Reviews from "./pages/Reviews";
 import ItemPricing from "./pages/ItemPricing";
 import NotFound from "./pages/NotFound";
 import { FirebaseAuthProvider } from "./contexts/FirebaseAuthContext";
+
 
 const queryClient = new QueryClient();
 
@@ -29,6 +29,7 @@ const App = () => (
             <Route path="/delivery-dashboard/*" element={<DeliveryDashboard />} />
             <Route path="/reviews" element={<Reviews />} />
             <Route path="/item-pricing/:category" element={<ItemPricing />} />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

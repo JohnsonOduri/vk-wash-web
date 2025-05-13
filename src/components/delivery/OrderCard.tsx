@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -50,6 +49,8 @@ const OrderCard = ({ order, onAccept, onReject }: OrderCardProps) => {
           <h4 className="text-sm font-medium text-gray-500">Pickup Details</h4>
           <p className="text-sm">{order.pickupAddress}</p>
           <p className="text-sm">{formatDate(order.pickupDate)}</p>
+          <p className="text-sm">Name: {order.customerName}</p> {/* Display customer name */}
+          <p className="text-sm">Phone: {order.customerPhone}</p> {/* Display customer phone */}
         </div>
         
         <div>

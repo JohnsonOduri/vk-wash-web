@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -137,32 +136,38 @@ const DeliveryOrders = ({ onCreateBill }: DeliveryOrdersProps) => {
   };
 
   const handleCreateBill = (order: Order) => {
-    if (onCreateBill) {
-      onCreateBill(order);
-    } else {
-      navigate('/delivery-dashboard/bill', { state: { orderId: order.id } });
-    }
+    navigate('/delivery-dashboard/bill', { 
+      state: { 
+        orderId: order.id, 
+        customerInfo: {
+          customerName: order.customerName, // Pass customer name
+          customerPhone: order.customerPhone, // Pass phone number
+          customerId: order.userId,
+          customerAddress: order.pickupAddress // Pass address
+        }
+      } 
+    });
   };
 
   const handleUpdateStatus = async (orderId: string, newStatus: Order['status']) => {
     try {
       await updateOrderStatus(orderId, newStatus);
-      
+
       // Show appropriate message based on status
       let message = `Order status updated to ${newStatus}`;
       if (newStatus === 'processing') {
-        message = "Order moved to processing after bill creation";
+        message = "Order moved to processing.";
       } else if (newStatus === 'ready') {
-        message = "Order is now ready for delivery";
+        message = "Order is now ready for delivery."; // Message for 'Ready'
       } else if (newStatus === 'delivered') {
-        message = "Order has been marked as delivered";
+        message = "Order has been marked as delivered.";
       }
-      
+
       toast({
         title: "Status Updated",
-        description: message
+        description: message,
       });
-      
+
       // Refresh assigned orders after status update
       fetchAssignedOrders();
     } catch (error) {
@@ -170,7 +175,7 @@ const DeliveryOrders = ({ onCreateBill }: DeliveryOrdersProps) => {
       toast({
         title: "Error",
         description: "Failed to update the order status",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };

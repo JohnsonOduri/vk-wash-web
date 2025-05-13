@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -137,6 +136,7 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
       case 'pending': return 'text-amber-500';
       case 'picked': return 'text-blue-500';
       case 'processing': return 'text-purple-500';
+      case 'ready': return 'text-green-500';
       case 'delivered': return 'text-green-500';
       case 'cancelled': return 'text-red-500';
       default: return 'text-gray-500';
@@ -144,21 +144,23 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
   };
   
   const getStatusDisplay = (status: string) => {
-    switch(status) {
+    switch (status) {
       case 'pending': return 'Booked';
       case 'picked': return 'Picked Up';
       case 'processing': return 'Processing';
+      case 'ready': return 'Ready'; // Display 'Ready'
       case 'delivered': return 'Delivered';
       case 'cancelled': return 'Cancelled';
       default: return status.charAt(0).toUpperCase() + status.slice(1);
     }
   };
-  
+
   const getProgressValue = (status: string) => {
-    switch(status) {
+    switch (status) {
       case 'pending': return 10;
       case 'picked': return 40;
-      case 'processing': return 75;
+      case 'processing': return 70;
+      case 'ready': return 90; // Progress for 'Ready'
       case 'delivered': return 100;
       case 'cancelled': return 0;
       default: return 0;
@@ -261,7 +263,19 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
               <div>
                 <div className="font-medium">Pickup Address</div>
                 <div className="text-gray-500">
-                  {order.pickupAddress}
+                  {order.pickupAddress} {/* Display address */}
+                </div>
+              </div>
+              <div>
+                <div className="font-medium">Customer Name</div>
+                <div className="text-gray-500">
+                  {order.customerName} {/* Display customer name */}
+                </div>
+              </div>
+              <div>
+                <div className="font-medium">Customer Phone</div>
+                <div className="text-gray-500">
+                  {order.customerPhone} {/* Display phone number */}
                 </div>
               </div>
               

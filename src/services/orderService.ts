@@ -1,4 +1,3 @@
-
 import { 
   collection, 
   addDoc, 
@@ -28,8 +27,8 @@ export interface Order {
   serviceType: string;
   items: OrderItem[];
   total: number;
-  status: 'pending' | 'picked' | 'processing' | 'ready' | 'delivering' | 'delivered' | 'cancelled';
-  pickupAddress: string;
+  status: 'pending' | 'picked' | 'processing' | 'ready' | 'delivering' | 'delivered' | 'cancelled'; // Include 'ready'
+  pickupAddress: string; // Ensure address is included
   pickupDate: string;
   specialInstructions?: string;
   createdAt: Timestamp | Date;
@@ -45,7 +44,7 @@ export const createOrder = async (orderData: Omit<Order, 'id' | 'createdAt' | 'u
     ...orderData,
     status: 'pending' as const,
     createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
+    updatedAt: serverTimestamp(),
   };
 
   const docRef = await addDoc(collection(db, 'orders'), orderWithTimestamps);
@@ -74,7 +73,7 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
   if (docSnap.exists()) {
     return {
       id: docSnap.id,
-      ...docSnap.data()
+      ...docSnap.data() // Ensure all fields, including name, phone, and address, are retrieved
     } as Order;
   }
   

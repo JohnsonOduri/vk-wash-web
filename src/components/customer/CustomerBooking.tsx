@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -59,11 +58,17 @@ const CustomerBooking: React.FC<CustomerBookingProps> = ({ customerId }) => {
     setIsSubmitting(true);
     
     try {
+      // Fetch user profile details
+      const customerName = user.name || 'Unknown Customer';
+      const customerPhone = user.phone || 'Unknown Phone';
+
       // Create an empty items array - items will be added by delivery person later
       const items = [];
       
       const orderId = await createOrder({
         userId: user.id,
+        customerName, // Include customer name
+        customerPhone, // Include customer phone
         serviceType: data.serviceType,
         items,
         total: 0, // Total will be calculated later by delivery person

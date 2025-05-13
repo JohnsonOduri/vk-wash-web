@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -30,16 +29,6 @@ const PaymentOptions = [
     id: 'phone_pay',
     name: 'PhonePe',
     description: 'Pay via PhonePe',
-  },
-  {
-    id: 'paytm',
-    name: 'Paytm',
-    description: 'Pay via Paytm',
-  },
-  {
-    id: 'internet_banking',
-    name: 'Internet Banking',
-    description: 'Pay via your bank account',
   },
 ];
 
@@ -155,7 +144,7 @@ const BillViewer = ({ customerId }) => {
                     {bill.items.map((item, index) => (
                       <div key={index} className="flex justify-between text-sm">
                         <span>{item.name} x{item.quantity}</span>
-                        <span>₹{item.total.toFixed(2)}</span>
+                        <span>₹{typeof item.total === 'number' ? item.total.toFixed(2) : "₹0.00"}</span> {/* Safely format item.total */}
                       </div>
                     ))}
                   </div>
@@ -164,15 +153,15 @@ const BillViewer = ({ customerId }) => {
                 <div className="py-3 space-y-1">
                   <div className="flex justify-between text-sm">
                     <span>Subtotal</span>
-                    <span>₹{bill.subtotal.toFixed(2)}</span>
+                    <span>₹{typeof bill.subtotal === 'number' ? bill.subtotal.toFixed(2) : "₹0.00"}</span> {/* Safely format bill.subtotal */}
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Tax</span>
-                    <span>₹{bill.tax.toFixed(2)}</span>
+                    <span>₹{typeof bill.tax === 'number' ? bill.tax.toFixed(2) : "₹0.00"}</span> {/* Safely format bill.tax */}
                   </div>
                   <div className="flex justify-between font-medium">
                     <span>Total</span>
-                    <span>₹{bill.total.toFixed(2)}</span>
+                    <span>₹{typeof bill.total === 'number' ? bill.total.toFixed(2) : "₹0.00"}</span> {/* Safely format bill.total */}
                   </div>
                 </div>
                 
@@ -212,7 +201,7 @@ const BillViewer = ({ customerId }) => {
             {selectedBill && (
               <div className="mb-4 p-3 bg-gray-50 rounded-md">
                 <div className="text-sm text-gray-500">Bill Total</div>
-                <div className="text-lg font-bold">₹{selectedBill.total.toFixed(2)}</div>
+                <div className="text-lg font-bold">₹{typeof selectedBill.total === 'number' ? selectedBill.total.toFixed(2) : "₹0.00"}</div> {/* Safely format selectedBill.total */}
               </div>
             )}
             

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,9 +52,9 @@ const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage, onCreateBill 
   };
   
   const getNextStatus = (currentStatus: string) => {
-    switch(currentStatus.toLowerCase()) {
+    switch (currentStatus.toLowerCase()) {
       case 'picked': return 'Processing';
-      case 'processing': return 'Ready';
+      case 'processing': return 'Ready'; // Transition to 'Ready'
       case 'ready': return 'Delivering';
       case 'delivering': return 'Delivered';
       default: return null;
@@ -100,49 +99,21 @@ const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage, onCreateBill 
         <div className="my-3 space-y-2">
           <div className="flex items-start">
             <MapPin className="h-4 w-4 mr-2 mt-0.5 text-gray-500" />
-            <div className="text-sm">{order.address}</div>
+            <div className="text-sm">{order.address}</div> {/* Display address */}
           </div>
           <div className="flex items-center">
             <Phone className="h-4 w-4 mr-2 text-gray-500" />
-            <div className="text-sm">{order.customerPhone}</div>
+            <div className="text-sm">{order.customerPhone}</div> {/* Display phone number */}
+          </div>
+          <div className="flex items-center">
+            <User className="h-4 w-4 mr-2 text-gray-500" />
+            <div className="text-sm">{order.customerName}</div> {/* Display customer name */}
           </div>
         </div>
-        
-        <div className="flex justify-between items-center bg-gray-50 px-3 py-2 rounded-md mt-2 mb-1">
-          <div className="text-sm">
-            <span className="font-medium">Customer</span>
-            <div className="text-gray-500">
-              <User className="h-3 w-3 inline mr-1" /> {order.customerName}
-            </div>
-          </div>
-          <Button variant="ghost" size="sm" onClick={() => setExpanded(!expanded)}>
-            {expanded ? 'Less' : 'More'}
-          </Button>
-        </div>
-        
-        {expanded && (
-          <div className="mt-4 space-y-3 animate-fade-in">
-            <div>
-              <h4 className="text-sm font-medium mb-1">Items</h4>
-              <ul className="list-disc list-inside text-sm text-gray-600 pl-2">
-                {order.items.map((item, idx) => (
-                  <li key={idx}>{item}</li>
-                ))}
-              </ul>
-            </div>
-            
-            <div>
-              <h4 className="text-sm font-medium mb-1">Delivery Date</h4>
-              <div className="text-sm text-gray-600">
-                Expected: {formatDate(order.estimatedDelivery)}
-              </div>
-            </div>
-          </div>
-        )}
       </CardContent>
       
       <CardFooter className="flex justify-between bg-gray-50 border-t">
-        {nextStatus ? (
+        {nextStatus && nextStatus !== 'Processing' && nextStatus !== 'Delivering' ? ( // Remove "Mark as Processing" and "Mark as Delivering"
           <Button 
             size="sm" 
             onClick={() => handleStatusUpdate(nextStatus)}
@@ -162,23 +133,11 @@ const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage, onCreateBill 
             Completed
           </Button>
         )}
-        
-        {(['delivered', 'processing', 'ready'].includes(order.status.toLowerCase())) && (
-          <Button 
-            size="sm" 
-            variant="outline"
-            onClick={() => onUploadImage(order.id)}
-            className="flex-1"
-          >
-            <Image className="h-4 w-4 mr-2" />
-            Upload Image
-          </Button>
-        )}
 
         {order.status.toLowerCase() === 'picked' && (
           <Button 
             size="sm" 
-            onClick={() => onCreateBill(order)}
+            onClick={() => onCreateBill(order)} // Pass the entire order object
             className="flex-1 ml-2 bg-blue-600 text-white"
           >
             <Plus className="h-4 w-4 mr-2" />

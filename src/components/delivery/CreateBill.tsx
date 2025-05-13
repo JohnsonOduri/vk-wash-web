@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { CheckCircle, Plus, Minus, Trash, UserPlus, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,11 +52,12 @@ const CreateBill = ({ orderId, customerInfo }) => {
     try {
       const order = await getOrderById(id);
       if (order) {
-        // If the order has customer info, use it
+        // Populate customer details from the order
         setCustomerId(order.userId || '');
         setCustomerName(order.customerName || '');
         setCustomerPhone(order.customerPhone || '');
-        setIsNewCustomer(false);
+        setCustomerAddress(order.pickupAddress || '');
+        setIsNewCustomer(false); // Mark as an existing customer
       }
     } catch (error) {
       console.error('Error fetching order details:', error);
@@ -339,6 +339,19 @@ const CreateBill = ({ orderId, customerInfo }) => {
                   onChange={(e) => setCustomerPhone(e.target.value)}
                   className="col-span-3"
                   placeholder="Customer Phone"
+                  disabled={!!customerInfo}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="customerAddress" className="text-right">
+                  Address
+                </Label>
+                <Input
+                  id="customerAddress"
+                  value={customerAddress}
+                  onChange={(e) => setCustomerAddress(e.target.value)}
+                  className="col-span-3"
+                  placeholder="Customer Address"
                   disabled={!!customerInfo}
                 />
               </div>
