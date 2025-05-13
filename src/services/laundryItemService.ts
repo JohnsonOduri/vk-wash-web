@@ -1,3 +1,4 @@
+
 import { 
   collection, 
   addDoc, 
@@ -211,60 +212,6 @@ export const updateBillPayment = async (billId: string, paymentMethod: Bill['pay
   });
 };
 
-export const updateBillPartialPayment = async (
-  billId: string, 
-  paymentMethod: 'cash' | 'upi',
-  amount: number,
-  remainingAmount: number
-): Promise<string> => {
-  try {
-    const billRef = doc(db, 'bills', billId);
-    const timestamp = new Date();
-    
-    // Update the bill but keep it pending with new remaining amount
-    await updateDoc(billRef, {
-      lastPartialPayment: timestamp,
-      partialPaymentMethod: paymentMethod,
-      partialPaymentAmount: amount,
-      total: remainingAmount, // Update the outstanding amount
-      // We don't change status to paid since there's remaining amount
-    });
-    
-    return billId;
-  } catch (error) {
-    console.error('Error updating bill payment:', error);
-    throw error;
-  }
-};
-
-export const getAllBills = async (): Promise<Bill[]> => {
-  const q = query(collection(db, 'bills'), orderBy('createdAt', 'desc'));
-  const querySnapshot = await getDocs(q);
-  
-  const bills: Bill[] = [];
-  querySnapshot.forEach((doc) => {
-    const data = doc.data();
-    bills.push({
-      id: doc.id,
-      customerId: data.customerId,
-      customerName: data.customerName,
-      customerPhone: data.customerPhone,
-      date: data.date?.toDate(),
-      createdAt: data.createdAt?.toDate() || data.date?.toDate() || new Date(),
-      items: data.items,
-      subtotal: data.subtotal,
-      tax: data.tax || 0,
-      total: data.total,
-      status: data.status,
-      paymentMethod: data.paymentMethod,
-      paymentDate: data.paymentDate ? data.paymentDate.toDate() : undefined,
-      orderId: data.orderId
-    } as Bill);
-  });
-  
-  return bills;
-};
-
 export const getBillsByOrderId = async (orderId: string): Promise<Bill | null> => {
   const q = query(collection(db, 'bills'), where('orderId', '==', orderId));
   const querySnapshot = await getDocs(q);
@@ -285,7 +232,6 @@ export const getBillsByOrderId = async (orderId: string): Promise<Bill | null> =
     createdAt: data.createdAt?.toDate() || data.date?.toDate() || new Date(),
     items: data.items,
     subtotal: data.subtotal,
-    tax: data.tax || 0,
     total: data.total,
     status: data.status,
     paymentMethod: data.paymentMethod,

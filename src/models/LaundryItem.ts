@@ -26,14 +26,10 @@ export interface Bill {
   createdAt?: Date;
   items: OrderItem[];
   subtotal: number;
-  tax: number;
+  tax: number; // Added tax property
   total: number;
   status?: 'pending' | 'paid' | 'cancelled';
   paymentMethod?: 'cash' | 'online' | 'card' | 'upi';
   paymentDate?: Date;
   orderId?: string;
-  partialPayment?: boolean;
-  lastPaymentMethod?: 'cash' | 'online' | 'card' | 'upi';
-  lastPaymentAmount?: number;
-  lastPaymentDate?: Date;
 }

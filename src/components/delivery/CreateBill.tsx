@@ -12,7 +12,7 @@ import { LaundryItem, OrderItem } from '@/models/LaundryItem';
 import { getAllLaundryItems, createBill } from '@/services/laundryItemService';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { getOrderById, updateOrderStatus, updateOrderBillId } from '@/services/orderService';
+import { getOrderById, updateOrderStatus } from '@/services/orderService';
 import { createCustomer, checkCustomerExists } from '@/services/customerService';
 
 const CreateBill = ({ orderId, customerInfo }) => {
@@ -180,13 +180,13 @@ const CreateBill = ({ orderId, customerInfo }) => {
     }
 
     try {
-      // Always use phone as customer ID
+      // Create a new customer using the service
       const newCustomerId = await createCustomer({
         name: customerName,
         phone: customerPhone,
         email: customerEmail,
         address: customerAddress,
-        // Use phone as customer ID
+        // Use phone as customer ID as requested
         id: customerPhone
       });
       
@@ -237,11 +237,9 @@ const CreateBill = ({ orderId, customerInfo }) => {
 
     try {
       const subtotal = calculateSubtotal();
-      // Always use phone number as customerId
-      const customerId = customerPhone;
-      
+      // Only include orderId if it is defined and not empty
       const billData: any = {
-        customerId: customerId,
+        customerId: customerPhone, // Always use phone number as customerId
         customerName,
         customerPhone,
         items: selectedItems,
@@ -249,22 +247,20 @@ const CreateBill = ({ orderId, customerInfo }) => {
         tax: 0,
         total: subtotal,
       };
-      
       if (currentOrderId) {
         billData.orderId = currentOrderId;
       }
 
-      const billId = await createBill(billData);
+      await createBill(billData);
 
-      // If we have an order ID, update its status to 'processing' and save the billId
+      // If we have an order ID, update its status to 'processing'
       if (currentOrderId) {
         await updateOrderStatus(currentOrderId, 'processing');
-        await updateOrderBillId(currentOrderId, billId);
       }
 
       toast({
         title: 'Success',
-        description: 'Bill has been generated successfully'
+        description: 'Bill has been generated and sent to the customer'
       });
       setSelectedItems([]);
 
