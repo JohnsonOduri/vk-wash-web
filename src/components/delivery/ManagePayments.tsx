@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,21 +8,30 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getBillsByStatus, updateBillPayment } from '@/services/laundryItemService';
 import { Bill } from '@/models/LaundryItem';
 import { format } from 'date-fns';
-import { CreditCard, Check, Phone, User, Calendar } from 'lucide-react';
+import { CreditCard, Check, Phone, User, Calendar, FileText } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { getAllBills } from '@/services/laundryItemService';
 
 const ManagePayments = () => {
   const [bills, setBills] = useState<Bill[]>([]);
+  const [allBills, setAllBills] = useState<Bill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [processingPayment, setProcessingPayment] = useState<string | null>(null);
   const [monthlyEarnings, setMonthlyEarnings] = useState(0);
   const [pendingAmount, setPendingAmount] = useState(0);
   const [viewingBill, setViewingBill] = useState<Bill | null>(null);
-  const [viewingOrder, setViewingOrder] = useState<any | null>(null); // Replace 'any' with your Order type if available
+  const [viewingOrder, setViewingOrder] = useState<any | null>(null);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi'>('cash');
+  const [activeTab, setActiveTab] = useState('pending');
   
   useEffect(() => {
     loadPendingBills();
+    loadAllBills();
   }, []);
   
   const loadPendingBills = async () => {
@@ -29,11 +39,11 @@ const ManagePayments = () => {
     try {
       const pendingBills = await getBillsByStatus('pending');
       
-      // Sort by date (oldest first)
+      // Sort by date (newest first)
       pendingBills.sort((a, b) => {
         const dateA = a.createdAt || a.date || new Date();
         const dateB = b.createdAt || b.date || new Date();
-        return dateA.getTime() - dateB.getTime();
+        return dateB.getTime() - dateA.getTime();
       });
       
       setBills(pendingBills);
@@ -49,6 +59,23 @@ const ManagePayments = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  const loadAllBills = async () => {
+    try {
+      const fetchedBills = await getAllBills();
+      
+      // Sort by date (newest first)
+      fetchedBills.sort((a, b) => {
+        const dateA = a.createdAt || a.date || new Date();
+        const dateB = b.createdAt || b.date || new Date();
+        return dateB.getTime() - dateA.getTime();
+      });
+      
+      setAllBills(fetchedBills);
+    } catch (error) {
+      console.error('Error loading all bills:', error);
     }
   };
   
@@ -77,20 +104,64 @@ const ManagePayments = () => {
     }
   };
   
-  const handleMarkAsPaid = async (billId: string, method: 'cash' | 'upi') => {
-    setProcessingPayment(billId);
+  const handleOpenPaymentDialog = (bill: Bill, method: 'cash' | 'upi') => {
+    setSelectedBill(bill);
+    setPaymentMethod(method);
+    setPaymentAmount(bill.total.toString());
+    setPaymentDialogOpen(true);
+  };
+  
+  const handleProcessPayment = async () => {
+    if (!selectedBill || !paymentAmount) return;
+    
+    setProcessingPayment(selectedBill.id);
     try {
-      await updateBillPayment(billId, method);
+      const amount = parseFloat(paymentAmount);
       
-      setBills((prevBills) => prevBills.filter(b => b.id !== billId));
+      if (isNaN(amount) || amount <= 0) {
+        toast({
+          title: 'Invalid Amount',
+          description: 'Please enter a valid payment amount',
+          variant: 'destructive'
+        });
+        return;
+      }
       
-      toast({
-        title: 'Payment Recorded',
-        description: `Payment has been marked as ${method === 'cash' ? 'Cash' : 'UPI'} payment`
-      });
+      if (amount >= selectedBill.total) {
+        // Full payment
+        await updateBillPayment(selectedBill.id, paymentMethod);
+        
+        toast({
+          title: 'Payment Recorded',
+          description: `Payment of ₹${amount.toFixed(2)} has been recorded as ${paymentMethod.toUpperCase()}`
+        });
+        
+        setBills(prevBills => prevBills.filter(b => b.id !== selectedBill.id));
+      } else {
+        // Partial payment
+        const newTotal = selectedBill.total - amount;
+        await updateBillPartialPayment(selectedBill.id, paymentMethod, amount, newTotal);
+        
+        toast({
+          title: 'Partial Payment Recorded',
+          description: `Payment of ₹${amount.toFixed(2)} recorded. Remaining amount: ₹${newTotal.toFixed(2)}`
+        });
+        
+        // Update the bill in the list with new total
+        setBills(prevBills => 
+          prevBills.map(bill => 
+            bill.id === selectedBill.id 
+              ? {...bill, total: newTotal} 
+              : bill
+          )
+        );
+      }
       
-      // Refresh metrics
+      setPaymentDialogOpen(false);
+      
+      // Refresh metrics and bills
       loadPendingBills();
+      loadAllBills();
     } catch (error) {
       console.error('Error updating payment:', error);
       toast({
@@ -110,10 +181,17 @@ const ManagePayments = () => {
     // setViewingOrder(order);
   };
   
-  const filteredBills = bills.filter(bill => 
+  const filteredPendingBills = bills.filter(bill => 
     bill.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     bill.customerPhone?.includes(searchQuery)
   );
+  
+  const filteredAllBills = allBills.filter(bill => 
+    bill.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    bill.customerPhone?.includes(searchQuery)
+  );
+  
+  const displayedBills = activeTab === 'pending' ? filteredPendingBills : filteredAllBills;
   
   return (
     <div className="space-y-6">
@@ -154,7 +232,12 @@ const ManagePayments = () => {
       <div className="bg-white shadow rounded-lg overflow-hidden">
         <div className="p-4 md:p-6 border-b">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <h3 className="text-lg font-semibold">Pending Payments</h3>
+            <Tabs defaultValue="pending" className="w-full" value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full max-w-md grid-cols-2">
+                <TabsTrigger value="pending">Pending Payments</TabsTrigger>
+                <TabsTrigger value="all">All Bills</TabsTrigger>
+              </TabsList>
+            </Tabs>
             <div className="md:w-64">
               <Input
                 placeholder="Search by name or phone..."
@@ -165,13 +248,13 @@ const ManagePayments = () => {
           </div>
         </div>
 
-        {isLoading ? (
+        {isLoading && activeTab === 'pending' ? (
           <div className="flex justify-center py-8">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
-        ) : filteredBills.length === 0 ? (
+        ) : displayedBills.length === 0 ? (
           <div className="p-6 text-center text-gray-500">
-            {searchQuery ? 'No payments match your search' : 'No pending payments found'}
+            {searchQuery ? 'No payments match your search' : activeTab === 'pending' ? 'No pending payments found' : 'No bills found'}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -182,12 +265,13 @@ const ManagePayments = () => {
                   <th className="px-6 py-3 text-left">Date</th>
                   <th className="px-6 py-3 text-left">Amount</th>
                   <th className="px-6 py-3 text-left">Items</th>
+                  <th className="px-6 py-3 text-left">Status</th>
                   <th className="px-6 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {filteredBills.map((bill) => (
-                  <tr key={bill.id} className="hover:bg-gray-50">
+                {displayedBills.map((bill) => (
+                  <tr key={bill.id} className={`hover:bg-gray-50 ${bill.status === 'pending' ? 'bg-amber-50' : ''}`}>
                     <td className="px-6 py-4">
                       <div className="flex items-center">
                         <div>
@@ -218,30 +302,42 @@ const ManagePayments = () => {
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {bill.items.length} {bill.items.length === 1 ? 'item' : 'items'}
                     </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        bill.status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {bill.status === 'paid' ? 'Paid' : 'Pending'}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          disabled={processingPayment === bill.id}
-                          onClick={() => handleMarkAsPaid(bill.id, 'cash')}
-                        >
-                          <Check className="h-4 w-4 mr-1" />
-                          Cash
-                        </Button>
-                        <Button 
-                          size="sm"
-                          disabled={processingPayment === bill.id}
-                          onClick={() => handleMarkAsPaid(bill.id, 'upi')}
-                        >
-                          <CreditCard className="h-4 w-4 mr-1" />
-                          UPI
-                        </Button>
+                        {bill.status === 'pending' && (
+                          <>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              disabled={processingPayment === bill.id}
+                              onClick={() => handleOpenPaymentDialog(bill, 'cash')}
+                            >
+                              <Check className="h-4 w-4 mr-1" />
+                              Cash
+                            </Button>
+                            <Button 
+                              size="sm"
+                              disabled={processingPayment === bill.id}
+                              onClick={() => handleOpenPaymentDialog(bill, 'upi')}
+                            >
+                              <CreditCard className="h-4 w-4 mr-1" />
+                              UPI
+                            </Button>
+                          </>
+                        )}
                         <Button
                           size="sm"
                           variant="secondary"
                           onClick={() => handleViewBill(bill)}
                         >
+                          <FileText className="h-4 w-4 mr-1" />
                           View Bill
                         </Button>
                       </div>
@@ -357,20 +453,47 @@ const ManagePayments = () => {
         </Dialog>
       )}
 
-      {/* Order Details Dialog (optional, implement as needed) */}
-      {/* {viewingOrder && (
-        <Dialog open={!!viewingOrder} onOpenChange={() => setViewingOrder(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Order Details</DialogTitle>
-            </DialogHeader>
-            <div>
-              Order ID: {viewingOrder}
-              {/* Render more order details here */}
-            {/*</div>
-          </DialogContent>
-        </Dialog>
-      )} */}
+      {/* Payment Dialog */}
+      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{paymentMethod === 'cash' ? 'Cash Payment' : 'UPI Payment'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {selectedBill && (
+              <div className="space-y-2">
+                <div className="p-3 bg-gray-50 rounded-md">
+                  <div className="text-sm text-gray-500">Total Bill Amount</div>
+                  <div className="text-lg font-bold">₹{selectedBill.total.toFixed(2)}</div>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium">Payment Amount</label>
+                  <Input 
+                    type="number" 
+                    value={paymentAmount} 
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    placeholder="Enter amount"
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Enter the amount received from customer
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>Cancel</Button>
+            <Button 
+              onClick={handleProcessPayment}
+              disabled={processingPayment === selectedBill?.id}
+            >
+              {processingPayment === selectedBill?.id ? 'Processing...' : 'Record Payment'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

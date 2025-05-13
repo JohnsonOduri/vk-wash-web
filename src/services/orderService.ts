@@ -249,7 +249,7 @@ export const addOrderReview = async (orderId: string, reviewId: string, rating: 
   });
 };
 
-// Add this function to get bills by order ID
+// Function to get bills by order ID
 export const getBillsByOrderId = async (orderId: string): Promise<any | null> => {
   const q = query(collection(db, 'bills'), where('orderId', '==', orderId));
   const querySnapshot = await getDocs(q);

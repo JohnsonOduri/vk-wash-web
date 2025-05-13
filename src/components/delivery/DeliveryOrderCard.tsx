@@ -1,8 +1,9 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MapPin, Phone, Package, CheckCircle, Truck, User, Receipt } from 'lucide-react';
+import { MapPin, Phone, Package, CheckCircle, Truck, User, Receipt, FileText } from 'lucide-react';
 import { updateOrderStatus, getBillsByOrderId } from '@/services/orderService';
 import { toast } from '@/hooks/use-toast';
 
@@ -30,6 +31,7 @@ interface DeliveryOrderCardProps {
 const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage, onCreateBill }: DeliveryOrderCardProps) => {
   const [expanded, setExpanded] = useState(false);
   const [checkingBill, setCheckingBill] = useState(false);
+  const [viewingBill, setViewingBill] = useState(false);
   const navigate = useNavigate();
   
   const formatDate = (date: Date) => {
@@ -108,6 +110,32 @@ const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage, onCreateBill 
       setCheckingBill(false);
     }
   };
+
+  const handleViewBill = async () => {
+    setViewingBill(true);
+    try {
+      const bill = await getBillsByOrderId(order.id);
+      if (bill) {
+        // Navigate to bill details
+        navigate('/delivery-dashboard', { state: { activeTab: 'payments', billId: bill.id } });
+      } else {
+        toast({
+          title: "Bill Not Found",
+          description: "The bill for this order could not be found",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching bill:", error);
+      toast({
+        title: "Error",
+        description: "Failed to retrieve bill information",
+        variant: "destructive"
+      });
+    } finally {
+      setViewingBill(false);
+    }
+  };
   
   const nextStatus = getNextStatus(order.status);
   
@@ -157,6 +185,19 @@ const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage, onCreateBill 
           >
             <Receipt className="h-4 w-4 mr-2" />
             {checkingBill ? 'Checking...' : 'Create Bill'}
+          </Button>
+        )}
+
+        {['processing', 'ready', 'delivering'].includes(order.status.toLowerCase()) && (
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={() => handleViewBill()}
+            className="flex-1 mr-2"
+            disabled={viewingBill}
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            {viewingBill ? 'Loading...' : 'View Bill'}
           </Button>
         )}
 
