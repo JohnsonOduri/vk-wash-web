@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { AlignRight, X, LogIn, Star } from 'lucide-react';
+import { AlignRight, X, LogIn, Star, MapPin } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -53,7 +53,8 @@ const Navigation = () => {
     { name: 'Pricing', anchor: 'pricing' },
     { name: 'About', anchor: 'about' },
     { name: 'Contact', anchor: 'contact' },
-    { name: 'Reviews', link: '/reviews' }
+    { name: 'Service Locations', link: '/service-locations', icon: MapPin },
+    { name: 'Reviews', link: '/reviews', icon: Star }
   ];
 
   return (
@@ -69,15 +70,15 @@ const Navigation = () => {
 
           {/* Desktop Nav */}
           {!isMobile && (
-            <div className="hidden md:flex items-center space-x-8">
+            <div className="hidden md:flex items-center space-x-6">
               {navItems.map((item) => (
                 item.link ? (
                   <Link 
                     key={item.name} 
                     to={item.link} 
-                    className="text-gray-600 hover:text-blue-600 transition-colors duration-200"
+                    className="text-gray-600 hover:text-blue-600 transition-colors duration-200 flex items-center"
                   >
-                    {item.name === 'Reviews' && <Star className="h-4 w-4 inline mr-1" />}
+                    {item.icon && <item.icon className="h-4 w-4 inline mr-1" />}
                     {item.name}
                   </Link>
                 ) : (
@@ -128,9 +129,9 @@ const Navigation = () => {
                 <Link 
                   key={item.name}
                   to={item.link} 
-                  className="text-xl font-medium text-gray-800 hover:text-blue-600"
+                  className="text-xl font-medium text-gray-800 hover:text-blue-600 flex items-center"
                 >
-                  {item.name === 'Reviews' && <Star className="h-4 w-4 inline mr-1" />}
+                  {item.icon && <item.icon className="h-5 w-5 inline mr-2" />}
                   {item.name}
                 </Link>
               ) : (

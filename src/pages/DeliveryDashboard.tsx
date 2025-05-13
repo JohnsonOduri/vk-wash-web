@@ -11,11 +11,12 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogOut, Home, Package } from 'lucide-react';
+import { LogOut, Home, Package, Receipt } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import DeliveryOrders from '@/components/delivery/DeliveryOrders';
 import ManageItems from '@/components/delivery/ManageItems';
 import CreateBill from '@/components/delivery/CreateBill';
+import ManagePayments from '@/components/delivery/ManagePayments';
 
 const DeliveryDashboard = () => {
   const { user, logout } = useFirebaseAuth();
@@ -78,6 +79,7 @@ const DeliveryDashboard = () => {
             <TabsTrigger value="activeOrders">Active Orders</TabsTrigger>
             <TabsTrigger value="items">Manage Items</TabsTrigger>
             <TabsTrigger value="bill">Create Bill</TabsTrigger>
+            <TabsTrigger value="payments">Manage Payments</TabsTrigger>
           </TabsList>
           
           <TabsContent value="activeOrders">
@@ -97,6 +99,10 @@ const DeliveryDashboard = () => {
                 customerPhone: selectedOrder.customerPhone
               } : null}
             />
+          </TabsContent>
+
+          <TabsContent value="payments">
+            <ManagePayments />
           </TabsContent>
         </Tabs>
       </main>

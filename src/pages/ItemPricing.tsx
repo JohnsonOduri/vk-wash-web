@@ -1,110 +1,138 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import Navigation from "@/components/Navigation";
+import Footer from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { getLaundryItemByCategory } from '@/services/laundryItemService';
 import { LaundryItem } from '@/models/LaundryItem';
-import { getAllLaundryItems } from '@/services/laundryItemService';
-import { toast } from '@/hooks/use-toast';
-import Navigation from '@/components/Navigation';
-import Footer from '@/components/Footer';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, Shirt, DollarSign } from 'lucide-react';
 
 const ItemPricing = () => {
-  const { category } = useParams<{ category: string }>();
+  const { category } = useParams();
   const [items, setItems] = useState<LaundryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [categoryTitle, setCategoryTitle] = useState('');
-  const [categoryDescription, setCategoryDescription] = useState('');
-
+  const [isLoading, setIsLoading] = useState(true);
+  
   useEffect(() => {
-    loadItems();
-    
-    // Set category details
-    if (category === 'regular') {
-      setCategoryTitle('Basic Wash Items');
-      setCategoryDescription('Our standard washing and drying service for everyday items');
-    } else if (category === 'premium') {
-      setCategoryTitle('Premium Wash & Iron Items');
-      setCategoryDescription('Enhanced cleaning and professional ironing for your finest garments');
-    } else if (category === 'express') {
-      setCategoryTitle('Express Service Items');
-      setCategoryDescription('Fast turnaround with premium quality for when you need it quickly');
+    if (category) {
+      loadItems(category);
     }
   }, [category]);
-
-  const loadItems = async () => {
-    setLoading(true);
+  
+  const loadItems = async (cat: string) => {
+    setIsLoading(true);
     try {
-      const allItems = await getAllLaundryItems();
-      const filteredItems = allItems.filter(item => 
-        item.category.toLowerCase() === (category || '').toLowerCase()
-      );
-      setItems(filteredItems);
+      const fetchedItems = await getLaundryItemByCategory(cat);
+      setItems(fetchedItems);
     } catch (error) {
       console.error('Error loading items:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load laundry items',
-        variant: 'destructive'
-      });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
-
+  
+  const getCategoryTitle = () => {
+    switch (category) {
+      case 'regular':
+        return 'Regular Wash Items';
+      case 'premium':
+        return 'Premium Wash Items';
+      case 'express':
+        return 'Express Wash Items';
+      default:
+        return 'Laundry Items';
+    }
+  };
+  
+  const getCategoryDescription = () => {
+    switch (category) {
+      case 'regular':
+        return 'Standard cleaning for everyday garments at affordable rates';
+      case 'premium':
+        return 'Special care for delicate fabrics and premium clothing';
+      case 'express':
+        return 'Quick turnaround service for urgent requirements';
+      default:
+        return 'Our comprehensive laundry price list';
+    }
+  };
+  
   return (
     <div className="min-h-screen flex flex-col">
       <Navigation />
       
-      <div className="flex-grow container-custom py-24">
-        <div className="mb-8">
-          <Link to="/#pricing">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Pricing
-            </Button>
+      <main className="flex-grow pt-24 pb-16">
+        <div className="container-custom">
+          <Link to="/#pricing" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
+            <ArrowLeft className="h-4 w-4 mr-1" /> Back to All Services
           </Link>
-        </div>
-        
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4">{categoryTitle}</h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">{categoryDescription}</p>
-        </div>
-        
-        {loading ? (
-          <div className="flex justify-center items-center py-12">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue mx-auto"></div>
-              <p className="mt-4 text-gray-500">Loading items...</p>
+          
+          <h1 className="text-3xl md:text-4xl font-bold mb-2">{getCategoryTitle()}</h1>
+          <p className="text-gray-600 mb-8">{getCategoryDescription()}</p>
+          
+          {isLoading ? (
+            <div className="flex justify-center py-20">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             </div>
-          </div>
-        ) : items.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {items.map(item => (
-              <Card key={item.id} className="hover:shadow-lg transition-all">
-                <CardHeader>
-                  <CardTitle className="flex justify-between">
-                    <span>{item.name}</span>
-                    <span className="text-blue-600">₹{item.price.toFixed(2)}</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-500">Category: {item.category}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-xl text-gray-500">No items found in this category</p>
-            <p className="mt-2 text-gray-400">Please check back later or contact us for custom pricing</p>
-            <Link to="/#contact" className="inline-block mt-6">
-              <Button>Contact Us</Button>
-            </Link>
-          </div>
-        )}
-      </div>
+          ) : items.length === 0 ? (
+            <div className="bg-white shadow-md rounded-lg p-8 text-center">
+              <h2 className="text-xl font-semibold mb-2">No Items Available</h2>
+              <p className="text-gray-600 mb-6">
+                We couldn't find any items in this category. Please check back later.
+              </p>
+              <Link to="/#pricing">
+                <Button>
+                  View Other Services
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                {items.map(item => (
+                  <Card key={item.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center">
+                        <Shirt className="h-5 w-5 mr-2 text-blue-600" />
+                        {item.name}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="text-sm text-gray-500 mb-1">Price per item</div>
+                          <div className="text-2xl font-bold flex items-center">
+                            <DollarSign className="h-5 w-5 text-green-600" />
+                            {item.price.toFixed(2)}
+                          </div>
+                        </div>
+                        <Link to="/login">
+                          <Button size="sm">
+                            Book Now
+                          </Button>
+                        </Link>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              
+              <div className="bg-blue-50 rounded-lg p-6 mt-8">
+                <h2 className="text-xl font-bold mb-2 text-center">Ready to get started?</h2>
+                <p className="text-center mb-6">Experience the best laundry service in town!</p>
+                <div className="flex justify-center">
+                  <Link to="/login">
+                    <Button size="lg">
+                      Sign Up Now
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </main>
       
       <Footer />
     </div>

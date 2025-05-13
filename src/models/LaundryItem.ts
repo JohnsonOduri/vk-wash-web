@@ -26,10 +26,9 @@ export interface Bill {
   createdAt?: Date;
   items: OrderItem[];
   subtotal: number;
-  tax?: number; // Added tax as optional
   total: number;
   status?: 'pending' | 'paid' | 'cancelled';
-  paymentMethod?: 'cash' | 'online' | 'card';
+  paymentMethod?: 'cash' | 'online' | 'card' | 'upi';
   paymentDate?: Date;
   orderId?: string;
 }

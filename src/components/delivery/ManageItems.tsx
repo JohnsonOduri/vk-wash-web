@@ -1,13 +1,15 @@
+
 import { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Plus, Trash } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { createLaundryItem, getAllLaundryItems } from '@/services/laundryItemService';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { createLaundryItem, getAllLaundryItems, deleteLaundryItem } from '@/services/laundryItemService';
 import { LaundryItem } from '@/models/LaundryItem';
 
 const ManageItems = () => {
@@ -24,6 +26,8 @@ const ManageItems = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<'regular' | 'premium' | 'express'>('regular');
+  const [deletingItem, setDeletingItem] = useState<string | null>(null);
 
   useEffect(() => {
     loadItems();
@@ -76,6 +80,27 @@ const ManageItems = () => {
     }
   };
 
+  const handleDeleteItem = async (itemId: string) => {
+    setDeletingItem(itemId);
+    try {
+      await deleteLaundryItem(itemId);
+      setItems(items.filter(item => item.id !== itemId));
+      toast({
+        title: 'Item Deleted',
+        description: 'Item has been successfully removed'
+      });
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete item',
+        variant: 'destructive'
+      });
+    } finally {
+      setDeletingItem(null);
+    }
+  };
+
   const resetForm = () => {
     setNewItem({
       name: '',
@@ -85,14 +110,14 @@ const ManageItems = () => {
   };
 
   const filteredItems = items.filter(item => 
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.category?.toLowerCase().includes(searchQuery.toLowerCase())
+    (item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.category?.toLowerCase().includes(searchQuery.toLowerCase())) &&
+    item.category === activeTab
   );
 
   const categoryOptions = [
     { value: 'regular', label: 'Regular' },
     { value: 'premium', label: 'Premium' },
-    { value: 'delicate', label: 'Delicate' },
     { value: 'express', label: 'Express' }
   ];
 
@@ -115,33 +140,54 @@ const ManageItems = () => {
         />
       </div>
 
-      {isLoading ? (
-        <div className="flex justify-center my-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredItems.length > 0 ? (
-            filteredItems.map(item => (
-              <Card key={item.id} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">{item.name}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-sm text-gray-500 mb-2">Category: {item.category}</div>
-                  <div className="text-lg font-semibold">₹{item.price.toFixed(2)}</div>
-                </CardContent>
-              </Card>
-            ))
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'regular' | 'premium' | 'express')}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="regular">Regular Items</TabsTrigger>
+          <TabsTrigger value="premium">Premium Items</TabsTrigger>
+          <TabsTrigger value="express">Express Items</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value={activeTab}>
+          {isLoading ? (
+            <div className="flex justify-center my-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
           ) : (
-            <Card className="col-span-full">
-              <CardContent className="py-8 text-center text-muted-foreground">
-                {searchQuery ? 'No items match your search' : 'No items available. Add your first item!'}
-              </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredItems.length > 0 ? (
+                filteredItems.map(item => (
+                  <Card key={item.id} className="hover:shadow-md transition-shadow">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">{item.name}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-sm text-gray-500 mb-2">Category: {item.category}</div>
+                      <div className="text-lg font-semibold">₹{item.price.toFixed(2)}</div>
+                    </CardContent>
+                    <CardFooter className="pt-0 flex justify-end">
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        onClick={() => handleDeleteItem(item.id)}
+                        disabled={deletingItem === item.id}
+                      >
+                        <Trash className="h-4 w-4 mr-1" />
+                        {deletingItem === item.id ? 'Deleting...' : 'Delete'}
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))
+              ) : (
+                <Card className="col-span-full">
+                  <CardContent className="py-8 text-center text-muted-foreground">
+                    {searchQuery ? 'No items match your search' : `No ${activeTab} items available. Add your first item!`}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           )}
-        </div>
-      )}
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent>

@@ -1,185 +1,136 @@
 
-import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Star, Send, ArrowLeft } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "@/hooks/use-toast";
+import { useState, useEffect } from 'react';
+import { Star, StarHalf, Calendar, MessageSquare, User } from 'lucide-react';
 import Navigation from "@/components/Navigation";
-
-const formSchema = z.object({
-  rating: z.number().min(1).max(5),
-  comment: z.string().min(5, "Comment must be at least 5 characters").max(500, "Comment must be less than 500 characters"),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+import Footer from "@/components/Footer";
+import { getAllReviews, calculateAverageRating } from '@/services/reviewService';
+import { Review } from '@/services/reviewService';
+import { format } from 'date-fns';
 
 const Reviews = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const orderId = location.state?.orderId;
-  const [hoveredStar, setHoveredStar] = useState(0);
-  const [submitting, setSubmitting] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [averageRating, setAverageRating] = useState(0);
   
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      rating: 0,
-      comment: "",
-    },
-  });
+  useEffect(() => {
+    loadReviews();
+  }, []);
   
-  const onSubmit = async (data: FormValues) => {
-    setSubmitting(true);
-    
-    // Simulate API call with a timeout
-    setTimeout(() => {
-      toast({
-        title: "Review Submitted",
-        description: "Thank you for your feedback!",
-      });
-      setSubmitting(false);
-      navigate("/customer-dashboard");
-    }, 1500);
+  const loadReviews = async () => {
+    setIsLoading(true);
+    try {
+      // Load all reviews
+      const fetchedReviews = await getAllReviews();
+      setReviews(fetchedReviews);
+      
+      // Calculate average rating
+      const avgRating = await calculateAverageRating();
+      setAverageRating(avgRating);
+    } catch (error) {
+      console.error('Error loading reviews:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
   
-  // If there's no order ID, show a message
-  if (!orderId) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Navigation />
-        <div className="flex-1 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Review Not Available</CardTitle>
-              <CardDescription>
-                No order was selected for review
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-center mb-6">
-                Please select an order from your dashboard to leave a review.
-              </p>
-            </CardContent>
-            <CardFooter>
-              <Button
-                className="w-full"
-                onClick={() => navigate("/customer-dashboard")}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Return to Dashboard
-              </Button>
-            </CardFooter>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-  
-  const stars = [1, 2, 3, 4, 5];
-  const rating = form.watch("rating");
+  const renderStars = (rating: number) => {
+    const stars = [];
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 !== 0;
+    
+    // Full stars
+    for (let i = 0; i < fullStars; i++) {
+      stars.push(<Star key={`full-${i}`} className="h-5 w-5 fill-yellow-400 text-yellow-400" />);
+    }
+    
+    // Half star if needed
+    if (hasHalfStar) {
+      stars.push(<StarHalf key="half" className="h-5 w-5 fill-yellow-400 text-yellow-400" />);
+    }
+    
+    // Empty stars
+    const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+    for (let i = 0; i < emptyStars; i++) {
+      stars.push(<Star key={`empty-${i}`} className="h-5 w-5 text-gray-300" />);
+    }
+    
+    return stars;
+  };
   
   return (
     <div className="min-h-screen flex flex-col">
       <Navigation />
-      <div className="flex-1 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Rate Your Experience</CardTitle>
-            <CardDescription>
-              Order #{orderId} • Share your feedback about our service
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="rating"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Rating</FormLabel>
-                      <FormControl>
-                        <div className="flex justify-center space-x-2">
-                          {stars.map((star) => (
-                            <button
-                              key={star}
-                              type="button"
-                              className="focus:outline-none"
-                              onMouseEnter={() => setHoveredStar(star)}
-                              onMouseLeave={() => setHoveredStar(0)}
-                              onClick={() => field.onChange(star)}
-                            >
-                              <Star
-                                className={`h-10 w-10 transition-colors ${
-                                  star <= (hoveredStar || rating)
-                                    ? "fill-yellow-400 text-yellow-400"
-                                    : "text-gray-300"
-                                }`}
-                              />
-                            </button>
-                          ))}
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="comment"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Your Comment</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Tell us about your experience..."
-                          className="min-h-[100px] resize-none"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <div className="flex space-x-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => navigate("/customer-dashboard")}
-                  >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    className="flex-1"
-                    disabled={submitting}
-                  >
-                    {submitting ? (
-                      "Submitting..."
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4 mr-2" />
-                        Submit Review
-                      </>
-                    )}
-                  </Button>
+      
+      <main className="flex-grow pt-24 pb-16">
+        <div className="container-custom">
+          <div className="text-center mb-16">
+            <h1 className="text-3xl md:text-4xl font-bold mb-4">Customer Reviews</h1>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              See what our customers are saying about our laundry services. We take pride in delivering high-quality service that makes our customers happy.
+            </p>
+          </div>
+          
+          {/* Average Rating Section */}
+          <div className="bg-white rounded-lg shadow-md p-8 mb-12 text-center">
+            <h2 className="text-2xl font-bold mb-4">Overall Customer Rating</h2>
+            
+            <div className="flex items-center justify-center mb-4">
+              <div className="flex">
+                {renderStars(averageRating)}
+              </div>
+              <span className="ml-2 text-xl font-semibold">{averageRating.toFixed(1)} out of 5</span>
+            </div>
+            
+            <p className="text-gray-600">
+              Based on {reviews.length} customer reviews
+            </p>
+          </div>
+          
+          {/* Reviews List */}
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+          ) : reviews.length === 0 ? (
+            <div className="bg-white rounded-lg shadow-md p-8 text-center">
+              <MessageSquare className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+              <h3 className="text-xl font-semibold mb-2">No Reviews Yet</h3>
+              <p className="text-gray-600">
+                Be the first to review our services!
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {reviews.map((review) => (
+                <div key={review.id} className="bg-white rounded-lg shadow-md overflow-hidden transition-transform hover:scale-[1.02]">
+                  <div className="p-6">
+                    <div className="flex items-center space-x-1 mb-3">
+                      {renderStars(review.rating)}
+                    </div>
+                    
+                    <div className="text-gray-700 mb-4">
+                      "{review.comment}"
+                    </div>
+                    
+                    <div className="flex items-center justify-between pt-4 border-t">
+                      <div className="flex items-center">
+                        <User className="h-4 w-4 mr-2 text-gray-500" />
+                        <span className="text-sm font-medium">{review.userName}</span>
+                      </div>
+                      <div className="flex items-center text-gray-500 text-sm">
+                        <Calendar className="h-4 w-4 mr-1" />
+                        {format(review.createdAt, 'MMM d, yyyy')}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
+      
+      <Footer />
     </div>
   );
 };

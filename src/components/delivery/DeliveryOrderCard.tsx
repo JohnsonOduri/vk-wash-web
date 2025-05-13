@@ -1,9 +1,10 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MapPin, Phone, Package, CheckCircle, Image, ArrowRight, Plus, User, Truck } from 'lucide-react';
-import { updateOrderStatus } from '@/services/orderService';
+import { MapPin, Phone, Package, CheckCircle, Truck, User, Receipt } from 'lucide-react';
+import { updateOrderStatus, getBillsByOrderId } from '@/services/orderService';
 import { toast } from '@/hooks/use-toast';
 
 interface Order {
@@ -17,17 +18,19 @@ interface Order {
   createdAt: Date;
   estimatedDelivery: Date;
   items: string[];
+  billId?: string;
 }
 
 interface DeliveryOrderCardProps {
   order: Order;
   onUpdateStatus: (orderId: string, newStatus: string) => void;
-  onUploadImage: (orderId: string) => void;
+  onUploadImage?: (orderId: string) => void;
   onCreateBill: (order: Order) => void;
 }
 
 const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage, onCreateBill }: DeliveryOrderCardProps) => {
   const [expanded, setExpanded] = useState(false);
+  const [checkingBill, setCheckingBill] = useState(false);
   const navigate = useNavigate();
   
   const formatDate = (date: Date) => {
@@ -53,10 +56,10 @@ const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage, onCreateBill 
   
   const getNextStatus = (currentStatus: string) => {
     switch (currentStatus.toLowerCase()) {
-      case 'picked': return 'Processing';
-      case 'processing': return 'Ready'; // Transition to 'Ready'
-      case 'ready': return 'Delivering';
-      case 'delivering': return 'Delivered';
+      case 'picked': return 'processing';
+      case 'processing': return 'ready';
+      case 'ready': return 'delivering';
+      case 'delivering': return 'delivered';
       default: return null;
     }
   };
@@ -71,6 +74,29 @@ const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage, onCreateBill 
         description: "Failed to update order status",
         variant: "destructive"
       });
+    }
+  };
+
+  const handleCheckBill = async () => {
+    setCheckingBill(true);
+    try {
+      const bill = await getBillsByOrderId(order.id);
+      if (bill) {
+        // Bill exists, navigate to bill tab
+        navigate('/delivery-dashboard', { state: { activeTab: 'bill', orderId: order.id } });
+      } else {
+        // No bill, create one
+        onCreateBill(order);
+      }
+    } catch (error) {
+      console.error("Error checking bill:", error);
+      toast({
+        title: "Error", 
+        description: "Failed to check bill information",
+        variant: "destructive"
+      });
+    } finally {
+      setCheckingBill(false);
     }
   };
   
@@ -99,30 +125,78 @@ const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage, onCreateBill 
         <div className="my-3 space-y-2">
           <div className="flex items-start">
             <MapPin className="h-4 w-4 mr-2 mt-0.5 text-gray-500" />
-            <div className="text-sm">{order.address}</div> {/* Display address */}
+            <div className="text-sm">{order.address}</div>
           </div>
           <div className="flex items-center">
             <Phone className="h-4 w-4 mr-2 text-gray-500" />
-            <div className="text-sm">{order.customerPhone}</div> {/* Display phone number */}
+            <div className="text-sm">{order.customerPhone}</div>
           </div>
           <div className="flex items-center">
             <User className="h-4 w-4 mr-2 text-gray-500" />
-            <div className="text-sm">{order.customerName}</div> {/* Display customer name */}
+            <div className="text-sm">{order.customerName}</div>
           </div>
         </div>
       </CardContent>
       
       <CardFooter className="flex justify-between bg-gray-50 border-t">
-        {nextStatus && nextStatus !== 'Processing' && nextStatus !== 'Delivering' ? ( // Remove "Mark as Processing" and "Mark as Delivering"
+        {order.status.toLowerCase() === 'picked' && (
+          <Button 
+            size="sm" 
+            onClick={() => handleCheckBill()} 
+            className="flex-1 mr-2"
+            disabled={checkingBill}
+          >
+            <Receipt className="h-4 w-4 mr-2" />
+            {checkingBill ? 'Checking...' : 'Create Bill'}
+          </Button>
+        )}
+
+        {order.status.toLowerCase() === 'processing' && (
+          <Button 
+            size="sm" 
+            onClick={() => handleStatusUpdate('ready')}
+            className="flex-1 mr-2"
+          >
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Mark as Ready
+          </Button>
+        )}
+        
+        {order.status.toLowerCase() === 'ready' && (
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={() => handleStatusUpdate('delivering')}
+            className="flex-1 ml-2"
+          >
+            <Truck className="h-4 w-4 mr-2" />
+            Start Delivery
+          </Button>
+        )}
+        
+        {order.status.toLowerCase() === 'delivering' && (
+          <Button 
+            size="sm" 
+            onClick={() => handleStatusUpdate('delivered')}
+            className="flex-1 ml-2"
+          >
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Mark as Delivered
+          </Button>
+        )}
+        
+        {nextStatus && !['picked', 'processing', 'ready', 'delivering'].includes(order.status.toLowerCase()) && (
           <Button 
             size="sm" 
             onClick={() => handleStatusUpdate(nextStatus)}
             className="flex-1 mr-2"
           >
             <CheckCircle className="h-4 w-4 mr-2" />
-            Mark as {nextStatus}
+            Mark as {nextStatus.charAt(0).toUpperCase() + nextStatus.slice(1)}
           </Button>
-        ) : (
+        )}
+        
+        {!nextStatus && (
           <Button 
             size="sm" 
             variant="outline" 
@@ -131,29 +205,6 @@ const DeliveryOrderCard = ({ order, onUpdateStatus, onUploadImage, onCreateBill 
           >
             <CheckCircle className="h-4 w-4 mr-2" />
             Completed
-          </Button>
-        )}
-
-        {order.status.toLowerCase() === 'picked' && (
-          <Button 
-            size="sm" 
-            onClick={() => onCreateBill(order)} // Pass the entire order object
-            className="flex-1 ml-2 bg-blue-600 text-white"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Create Bill
-          </Button>
-        )}
-
-        {order.status.toLowerCase() === 'ready' && (
-          <Button 
-            size="sm" 
-            variant="outline"
-            onClick={() => handleStatusUpdate('Delivering')}
-            className="flex-1 ml-2"
-          >
-            <Truck className="h-4 w-4 mr-2" />
-            Start Delivery
           </Button>
         )}
       </CardFooter>
