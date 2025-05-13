@@ -259,26 +259,40 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
                   </div>
                 </div>
               </div>
-              
-              <div>
-                <div className="font-medium">Pickup Address</div>
-                <div className="text-gray-500">
-                  {order.pickupAddress} {/* Display address */}
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <div className="font-medium">Pickup Address</div>
+                  <div className="text-gray-500">
+                    {order.pickupAddress}
+                  </div>
+                </div>
+                {['picked', 'processing', 'ready', 'delivering', 'delivered'].includes(order.status) &&
+                  order.deliveryPersonName && order.deliveryPersonPhone && (
+                  <div>
+                    <div className="font-medium text-gray-700">Delivery Boy Details</div>
+                    <div className="text-sm text-gray-700">
+                      Name: <span className="font-semibold">{order.deliveryPersonName}</span>
+                    </div>
+                    <div className="text-sm text-gray-700">
+                      Phone: <span className="font-semibold">{order.deliveryPersonPhone}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <div className="font-medium">Customer Name</div>
+                  <div className="text-gray-500">
+                    {order.customerName}
+                  </div>
+                </div>
+                <div>
+                  <div className="font-medium">Customer Phone</div>
+                  <div className="text-gray-500">
+                    {order.customerPhone}
+                  </div>
                 </div>
               </div>
-              <div>
-                <div className="font-medium">Customer Name</div>
-                <div className="text-gray-500">
-                  {order.customerName} {/* Display customer name */}
-                </div>
-              </div>
-              <div>
-                <div className="font-medium">Customer Phone</div>
-                <div className="text-gray-500">
-                  {order.customerPhone} {/* Display phone number */}
-                </div>
-              </div>
-              
               {order.specialInstructions && (
                 <div>
                   <div className="font-medium">Special Instructions</div>
@@ -307,6 +321,7 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
               )}
             </div>
           )}
+          
         </CardContent>
         
         <CardFooter className="flex justify-between pt-2">
