@@ -15,6 +15,7 @@ import {
 import { db } from '@/lib/firebase';
 
 export interface OrderItem {
+  category: any;
   name: string;
   quantity: number;
   price: number;

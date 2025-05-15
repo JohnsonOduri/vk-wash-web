@@ -270,7 +270,15 @@ const BillViewer = ({ customerId }) => {
                       {orderItems && orderItems.length > 0 ? (
                         orderItems.map((item, idx) => (
                           <div key={idx} className="flex justify-between text-sm">
-                            <span>{item.name} x{item.quantity}</span>
+                            <span>
+                              {item.name}
+                              {item.category ? (
+                                <span className="ml-2 text-xs text-gray-500 font-normal">
+                                  [{item.category}]
+                                </span>
+                              ) : null}
+                              {" "}x{item.quantity}
+                            </span>
                             <span>
                               ₹{typeof item.price === 'number'
                                 ? item.price.toFixed(2)
