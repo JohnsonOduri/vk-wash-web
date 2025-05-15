@@ -38,7 +38,7 @@ const BillViewer = ({ customerId }) => {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('cash');
-  const [pendingCashPayment, setPendingCashPayment] = useState<{ billId: string } | null>(null);
+  const [pendingCashPayment, setPendingCashPayment] = useState<{ billId: string, method: string } | null>(null);
 
   useEffect(() => {
     if (customerId) {
@@ -165,13 +165,13 @@ const BillViewer = ({ customerId }) => {
   const handleProcessPayment = async () => {
     if (!selectedBill) return;
 
-    if (selectedPaymentMethod === 'cash') {
-      // For cash, mark as pending verification
-      setPendingCashPayment({ billId: selectedBill.id });
+    if (selectedPaymentMethod === 'cash' || selectedPaymentMethod === 'upi') {
+      // For cash or UPI, mark as pending verification
+      setPendingCashPayment({ billId: selectedBill.id, method: selectedPaymentMethod });
       setIsPaymentDialogOpen(false);
       toast({
-        title: 'Cash Payment Initiated',
-        description: 'Please hand over the cash to the delivery staff. Your payment will be marked as paid after verification.',
+        title: `${selectedPaymentMethod === 'cash' ? 'Cash' : 'UPI'} Payment Initiated`,
+        description: `Please complete the payment with the delivery staff. Your payment will be marked as paid after verification.`,
       });
       return;
     }
@@ -361,15 +361,19 @@ const BillViewer = ({ customerId }) => {
         </DialogContent>
       </Dialog>
 
-      {/* Show info dialog if cash payment is pending verification */}
+      {/* Show info dialog if cash or upi payment is pending verification */}
       <Dialog open={!!pendingCashPayment} onOpenChange={() => setPendingCashPayment(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Cash Payment Pending Verification</DialogTitle>
+            <DialogTitle>
+              {pendingCashPayment?.method === 'upi'
+                ? 'UPI Payment Pending Verification'
+                : 'Cash Payment Pending Verification'}
+            </DialogTitle>
           </DialogHeader>
           <div className="py-4">
             <p>
-              Your cash payment will be marked as paid after the delivery staff verifies the payment. Please hand over the cash to the staff.
+              Your {pendingCashPayment?.method === 'upi' ? 'UPI' : 'cash'} payment will be marked as paid after the delivery staff verifies the payment. Please complete the payment with the staff.
             </p>
           </div>
           <DialogFooter>
