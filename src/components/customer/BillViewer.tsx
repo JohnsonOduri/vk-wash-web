@@ -38,6 +38,7 @@ const BillViewer = ({ customerId }) => {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('cash');
+  const [pendingCashPayment, setPendingCashPayment] = useState<{ billId: string } | null>(null);
 
   useEffect(() => {
     if (customerId) {
@@ -158,11 +159,23 @@ const BillViewer = ({ customerId }) => {
   const handlePaymentClick = (bill: Bill) => {
     setSelectedBill(bill);
     setIsPaymentDialogOpen(true);
+    setSelectedPaymentMethod('cash');
   };
 
   const handleProcessPayment = async () => {
     if (!selectedBill) return;
-    
+
+    if (selectedPaymentMethod === 'cash') {
+      // For cash, mark as pending verification
+      setPendingCashPayment({ billId: selectedBill.id });
+      setIsPaymentDialogOpen(false);
+      toast({
+        title: 'Cash Payment Initiated',
+        description: 'Please hand over the cash to the delivery staff. Your payment will be marked as paid after verification.',
+      });
+      return;
+    }
+
     try {
       await updateBillPayment(selectedBill.id, selectedPaymentMethod as Bill['paymentMethod']);
       toast({
@@ -170,7 +183,7 @@ const BillViewer = ({ customerId }) => {
         description: `Payment of ₹${selectedBill.total.toFixed(2)} completed via ${getPaymentMethodName(selectedPaymentMethod)}`
       });
       setIsPaymentDialogOpen(false);
-      loadBillsAndOrders(); // Refresh bills to show updated status
+      loadBillsAndOrders();
     } catch (error) {
       console.error('Payment error:', error);
       toast({
@@ -344,6 +357,23 @@ const BillViewer = ({ customerId }) => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsPaymentDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleProcessPayment}>Process Payment</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Show info dialog if cash payment is pending verification */}
+      <Dialog open={!!pendingCashPayment} onOpenChange={() => setPendingCashPayment(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cash Payment Pending Verification</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p>
+              Your cash payment will be marked as paid after the delivery staff verifies the payment. Please hand over the cash to the staff.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setPendingCashPayment(null)}>OK</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
