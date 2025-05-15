@@ -116,6 +116,7 @@ const Services = () => {
           className="text-center mb-12"
         >
           <h2 className="text-3xl font-bold mb-4">Our Services</h2>
+          <p>Services All over Hyderabad</p>
           <p className="text-gray-600 max-w-2xl mx-auto">
             VK Wash offers a wide range of laundry services to meet your needs.
             From basic washing to premium care for your delicate fabrics.
