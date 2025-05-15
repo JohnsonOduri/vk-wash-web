@@ -9,6 +9,8 @@ import { getBillsByStatus, updateBillPayment } from '@/services/laundryItemServi
 import { format } from 'date-fns';
 import { CreditCard, Check, Phone, User, Calendar } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export interface Payment {
   amount: number;
@@ -531,18 +533,120 @@ const ManagePayments = () => {
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={() => {
-                    // Compose WhatsApp message with order details
-                    const phone = viewingBill.customerPhone?.replace(/[^0-9]/g, "");
-                    const itemsText = viewingBill.items
-                      .map(
-                        (item) =>
-                          `${item.name} x ${item.quantity} (₹${typeof item.price === 'number' ? item.price.toFixed(2) : "0.00"})`
-                      )
-                      .join("%0A");
-                    const message = `Hello ${viewingBill.customerName},%0AHere are your bill/order details:%0A%0ABill ID: ${viewingBill.id}%0AItems:%0A${itemsText}%0ATotal: ₹${typeof viewingBill.total === 'number' ? viewingBill.total.toFixed(2) : "0.00"}%0AStatus: ${viewingBill.status === 'paid' ? 'Paid' : 'Pending Payment'}`;
-                    const whatsappUrl = `https://wa.me/91${phone}?text=${message}`;
-                    window.open(whatsappUrl, "_blank");
+                  onClick={async () => {
+                    // Generate an image (canvas) for the bill
+                    const width = 600;
+                    const height = 400 + (viewingBill.items.length * 30);
+                    const canvas = document.createElement("canvas");
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext("2d");
+                    if (!ctx) {
+                      toast({
+                        title: "Error",
+                        description: "Could not generate invoice image.",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+
+                    // Background
+                    ctx.fillStyle = "#fff";
+                    ctx.fillRect(0, 0, width, height);
+
+                    // Draw logo before VK Wash Invoice
+                    const logo = new window.Image();
+                    logo.src = "/src/components/pictures/VK logo.png";
+                    logo.onload = async () => {
+                      // Set logo size to match font height (28px)
+                      const logoSize = 28;
+                      ctx.drawImage(logo, 30, 22, logoSize, logoSize);
+
+                      // Title next to logo
+                      ctx.fillStyle = "#222";
+                      ctx.font = "bold 28px Arial";
+                      ctx.textBaseline = "top";
+                      ctx.fillText("VK Wash Invoice", 30 + logoSize + 12, 22);
+
+                      // Customer Info
+                      ctx.font = "16px Arial";
+                      ctx.textBaseline = "alphabetic";
+                      ctx.fillText(`Customer Name: ${viewingBill.customerName || ""}`, 30, 90);
+                      ctx.fillText(`Phone: ${viewingBill.customerPhone || ""}`, 30, 120);
+
+                      // Bill Info
+                      ctx.fillText(`Bill ID: ${viewingBill.id || ""}`, 30, 150);
+                      ctx.fillText(
+                        `Date: ${
+                          viewingBill.createdAt
+                            ? (typeof viewingBill.createdAt === "string"
+                                ? viewingBill.createdAt
+                                : new Date(viewingBill.createdAt).toLocaleString())
+                            : ""
+                        }`,
+                        30,
+                        180
+                      );
+
+                      // Table Headers
+                      ctx.font = "bold 16px Arial";
+                      ctx.fillText("Item", 30, 220);
+                      ctx.fillText("Category", 200, 220);
+                      ctx.fillText("Qty", 320, 220);
+                      ctx.fillText("Price", 380, 220);
+                      ctx.fillText("Total", 470, 220);
+
+                      // Table Rows
+                      ctx.font = "16px Arial";
+                      let y = 250;
+                      viewingBill.items.forEach((item) => {
+                        ctx.fillText(item.name, 30, y);
+                        ctx.fillText(item.category || "", 200, y);
+                        ctx.fillText(String(item.quantity), 320, y);
+                        ctx.fillText(
+                          `₹${typeof item.price === "number" ? item.price.toFixed(2) : "0.00"}`,
+                          380,
+                          y
+                        );
+                        ctx.fillText(
+                          `₹${typeof item.price === "number" ? (item.price * item.quantity).toFixed(2) : "0.00"}`,
+                          470,
+                          y
+                        );
+                        y += 30;
+                      });
+
+                      // Totals
+                      y += 10;
+                      ctx.font = "bold 16px Arial";
+                      ctx.fillText(`Subtotal: ₹${viewingBill.subtotal?.toFixed(2) || "0.00"}`, 30, y);
+                      ctx.fillText(`Tax: ₹${viewingBill.tax?.toFixed(2) || "0.00"}`, 30, y + 30);
+                      ctx.fillText(`Total: ₹${viewingBill.total?.toFixed(2) || "0.00"}`, 30, y + 60);
+                      ctx.fillText(
+                        `Status: ${viewingBill.status === "paid" ? "Paid" : "Pending Payment"}`,
+                        30,
+                        y + 90
+                      );
+
+                      // Convert canvas to blob and upload
+                      canvas.toBlob(async (blob) => {
+                        if (!blob) {
+                          toast({
+                            title: "Error",
+                            description: "Could not create invoice image.",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        await uploadInvoiceImageAndShareWhatsApp(
+                          blob,
+                          viewingBill.customerPhone || "",
+                          viewingBill.customerName || "",
+                          viewingBill.id || "invoice",
+                          viewingBill.total // Pass amount for UPI link
+                        );
+                      }, "image/png");
+                    };
                   }}
                 >
                   Share Order Details
@@ -560,7 +664,8 @@ const ManagePayments = () => {
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle>All Bills (Last {showAllBills ? '90' : '30'} Days)</CardTitle>
           <Button
-            size="sm"
+
+           size="sm"
             variant="outline"
             onClick={() => {
               setShowAllBills(!showAllBills);
@@ -662,3 +767,53 @@ const ManagePayments = () => {
 };
 
 export default ManagePayments;
+
+// Update the helper function to include payment link in WhatsApp message
+async function uploadInvoiceImageAndShareWhatsApp(
+  imageBlob: Blob,
+  customerPhoneNumber: string,
+  customerName: string,
+  billId: string,
+  amount?: number
+) {
+  const cloudName = "djxvembm4";
+  const unsignedUploadPreset = "vkwash_invoice";
+  const fileName = `${customerName.replace(/\s+/g, "_")}-${billId}`;
+  const url = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+
+  const formData = new FormData();
+  formData.append("file", imageBlob, `${fileName}.png`);
+  formData.append("upload_preset", unsignedUploadPreset);
+  formData.append("public_id", fileName);
+
+  let imageUrl = "";
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      body: formData,
+    });
+    const data = await response.json();
+    if (data.secure_url) {
+      imageUrl = data.secure_url;
+    } else {
+      throw new Error("Cloudinary upload failed");
+    }
+  } catch (err) {
+    toast({
+      title: "Upload Failed",
+      description: "Could not upload invoice image to Cloudinary.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  // Payment link
+  const upiAmount = amount ? amount.toFixed(2) : "0";
+  const upiLink = `upi://pay?pa=vk149763@oksbi&pn=Vijay%20Kumar&am=${upiAmount}&cu=INR`;
+
+  // WhatsApp message with image link and payment link
+  const phone = customerPhoneNumber.replace(/[^0-9]/g, "");
+  const message = `Hello ${customerName},%0AHere is your VK Wash invoice image:%0A${imageUrl}%0A%0APayment link:%0A${upiLink}`;
+  const whatsappUrl = `https://wa.me/91${phone}?text=${message}`;
+  window.open(whatsappUrl, "_blank");
+}
