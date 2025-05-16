@@ -56,7 +56,7 @@ const Contact = () => {
                   <h4 className="font-bold mb-2">Contact Information</h4>
                   <p className="text-gray-600">
                     Email: vkwashexpress@gmail.com<br />
-                    Phone: +91 81065 49413<br />
+                    Phone: +91 81065 49413, +91 81438 46341<br />
                   </p>
                 </div>
                 

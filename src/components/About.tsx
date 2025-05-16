@@ -9,7 +9,7 @@ const About = () => {
           <div className="lg:w-1/2">
             <div className="aspect-video bg-gray-200 rounded-lg overflow-hidden">
               <img 
-                src="https://images.unsplash.com/photo-1582562124811-c09040d0a901?auto=format&fit=crop&w=800&h=450" 
+                src="" 
                 alt="VK Wash Laundry Facility" 
                 className="w-full h-full object-cover"
               />
