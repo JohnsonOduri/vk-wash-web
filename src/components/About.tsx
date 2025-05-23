@@ -1,3 +1,4 @@
+import vkLogo from './pictures/VK logo.png';
 
 const About = () => {
   return (
@@ -9,7 +10,7 @@ const About = () => {
           <div className="lg:w-1/2">
             <div className="aspect-video bg-gray-200 rounded-lg overflow-hidden">
               <img 
-                src="src/components/pictures/VK logo.png" 
+                src={vkLogo}
                 alt="VK Wash Laundry Facility" 
                 className="w-full h-full object-cover"
               />
