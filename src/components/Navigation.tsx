@@ -66,7 +66,7 @@ const Navigation = () => {
     { name: 'Pricing', href: '#pricing', onClick: () => scrollToSection('pricing') },
     { name: 'About', href: '#about', onClick: () => scrollToSection('about') },
     { name: 'Contact', href: '#contact', onClick: () => scrollToSection('contact') },
-    { name: 'Reviews', href: '/reviews', onClick: handleReviewsClick }
+    
   ];
   
   // Function to scroll to sections on the main page
