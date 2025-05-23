@@ -55,7 +55,7 @@ const Services = () => {
     {
       title: "Dry Cleaning",
       description: "Professional dry cleaning",
-      image: "public/lovable-uploads/dryCleaning.jpg",
+      image: "src/components/pictures/dryCleaning.png",
       alt: "Dry Cleaning",
       animation: pulseAnimation,
       details: [
@@ -69,7 +69,7 @@ const Services = () => {
     {
       title: "Ironing",
       description: "Professional ironing services",
-      image: "public/lovable-uploads/ironing.jpg",
+      image: "src/components/pictures/ironing.png",
       alt: "Ironing",
       animation: floatAnimation,
       details: [
@@ -83,7 +83,7 @@ const Services = () => {
     {
       title: "Washing",
       description: "Quality washing for all fabrics",
-      image: "public/lovable-uploads/washing.jpg",
+      image: "src/components/pictures/washing.png",
       alt: "Washing",
       animation: pulseAnimation,
       details: [

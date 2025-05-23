@@ -18,7 +18,7 @@ const pricingData = [
 		],
 		popular: false,
 		buttonText: '3-4 Day Turnaround',
-		image: 'public/lovable-uploads/basic-wash.jpg',
+		image: 'src/components/pictures/basic-wash.png',
 		category: 'regular',
 	},
 	{
@@ -34,7 +34,7 @@ const pricingData = [
 		],
 		popular: true,
 		buttonText: '2-3 Day Turnaround',
-		image: 'public/lovable-uploads/premium-wash.jpg',
+		image: 'src/components/pictures/premium-wash.png',
 		category: 'premium',
 	},
 	{
@@ -50,7 +50,7 @@ const pricingData = [
 		],
 		popular: false,
 		buttonText: '24-Hour Turnaround',
-		image: 'public/lovable-uploads/express-services.jpg',
+		image: 'src/components/pictures/express-services.png',
 		category: 'express',
 	},
 ];
