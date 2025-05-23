@@ -255,3 +255,46 @@ export const getBillsByOrderId = async (orderId: string): Promise<Bill | null> =
     orderId: data.orderId
   } as Bill;
 };
+
+export const updateBillPartialPayment = async (billId: string, amount: number) => {
+  try {
+    const billRef = doc(db, 'bills', billId);
+    
+    // First get the current bill data
+    const billDoc = await getDoc(billRef);
+    if (!billDoc.exists()) {
+      throw new Error('Bill not found');
+    }
+    
+    const billData = billDoc.data();
+    const currentAmountPaid = billData.amountPaid || 0;
+    const newAmountPaid = currentAmountPaid + amount;
+    
+    // Calculate remaining balance
+    const totalAmount = billData.totalAmount || 0;
+    const remainingBalance = totalAmount - newAmountPaid;
+    
+    // Update payment status if fully paid
+    const paymentStatus = newAmountPaid >= totalAmount ? 'Paid' : 'Partially Paid';
+    
+    // Update the bill document
+    await updateDoc(billRef, {
+      amountPaid: newAmountPaid,
+      remainingBalance: remainingBalance,
+      paymentStatus: paymentStatus,
+      lastUpdated: new Date().toISOString()
+    });
+    
+    return {
+      success: true,
+      message: `Payment of ${amount} recorded successfully.`,
+      paymentStatus
+    };
+  } catch (error) {
+    console.error('Error updating bill partial payment:', error);
+    return {
+      success: false,
+      message: `Error updating payment: ${error.message}`
+    };
+  }
+}

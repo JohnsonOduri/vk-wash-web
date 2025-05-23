@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from 'react';
-import { Menu, X, LogIn, Home } from 'lucide-react';
+import { Menu, X, LogIn, Home, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -53,6 +54,11 @@ const Navigation = () => {
     setIsMenuOpen(false);
   };
   
+  const handlePrivacyPolicyClick = () => {
+    navigate('/privacy-policy');
+    setIsMenuOpen(false);
+  };
+  
   // Determine if we're on the main landing page
   const isMainPage = location.pathname === '/';
   
@@ -66,7 +72,7 @@ const Navigation = () => {
     { name: 'Pricing', href: '#pricing', onClick: () => scrollToSection('pricing') },
     { name: 'About', href: '#about', onClick: () => scrollToSection('about') },
     { name: 'Contact', href: '#contact', onClick: () => scrollToSection('contact') },
-    
+    { name: 'Privacy Policy', href: '/privacy-policy', onClick: handlePrivacyPolicyClick },
   ];
   
   // Function to scroll to sections on the main page
@@ -82,6 +88,7 @@ const Navigation = () => {
   const otherPagesLinks = [
     { name: 'Home', href: '/', onClick: handleHomeClick },
     { name: 'Reviews', href: '/reviews', onClick: handleReviewsClick },
+    { name: 'Privacy Policy', href: '/privacy-policy', onClick: handlePrivacyPolicyClick },
     { 
       name: 'Dashboard', 
       href: user?.role === 'customer' ? '/customer-dashboard' : '/delivery-dashboard',
