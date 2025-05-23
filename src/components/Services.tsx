@@ -15,12 +15,6 @@ import {
 } from "@/components/ui/hover-card";
 import { useState } from "react";
 
-// Import images
-
-import dryCleaning from "./pictures/dryCleaning.jpg";
-import ironing from "./pictures/ironing.jpg";
-import washing from "./pictures/washing.jpg";
-
 const floatAnimation = {
   initial: { y: 0 },
   animate: { 
@@ -58,11 +52,10 @@ const fadeInAnimation = {
 
 const Services = () => {
   const services = [
-    
     {
       title: "Dry Cleaning",
       description: "Professional dry cleaning",
-      image: dryCleaning,
+      image: "/public/lovable-uploads/pictures/dryCleaning.jpg",
       alt: "Dry Cleaning",
       animation: pulseAnimation,
       details: [
@@ -76,7 +69,7 @@ const Services = () => {
     {
       title: "Ironing",
       description: "Professional ironing services",
-      image: ironing,
+      image: "/public/lovable-uploads/pictures/ironing.jpg",
       alt: "Ironing",
       animation: floatAnimation,
       details: [
@@ -90,7 +83,7 @@ const Services = () => {
     {
       title: "Washing",
       description: "Quality washing for all fabrics",
-      image: washing,
+      image: "/public/lovable-uploads/pictures/washing.jpg",
       alt: "Washing",
       animation: pulseAnimation,
       details: [
