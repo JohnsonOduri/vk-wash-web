@@ -1,3 +1,5 @@
+import vkLogo from './pictures/VK logo.png';
+
 const Footer = () => {
   const currentYear = new Date().getFullYear();
 
@@ -7,7 +9,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           <div>
             <img 
-              src=":public/lovable-uploads/VK logo.png" 
+              src={vkLogo} 
               alt="VK Wash Logo" 
               className="h-12 mb-4 invert opacity-90"
             />

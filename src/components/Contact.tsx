@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
+import whatsappImg from './pictures/Whatsapp.png';
 
 const Contact = () => {
   const { toast } = useToast();
@@ -82,7 +83,7 @@ const Contact = () => {
                       className="w-10 h-10 rounded-full bg-blue bg-opacity-10 flex items-center justify-center text-blue hover:bg-opacity-20 transition-colors"
                     >
                       <img 
-                        src="src/components/pictures/Whatsapp.png" 
+                        src={whatsappImg} 
                         alt="WhatsApp" 
                         className="w-6 h-6"
                       />

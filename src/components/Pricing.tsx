@@ -4,6 +4,10 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import basicWashImg from './pictures/basic-wash.png';
+import premiumWashImg from './pictures/premium-wash.png';
+import expressServicesImg from './pictures/express-services.png';
+
 const pricingData = [
 	{
 		title: 'Basic Wash',
@@ -18,7 +22,7 @@ const pricingData = [
 		],
 		popular: false,
 		buttonText: '3-4 Day Turnaround',
-		image: 'src/components/pictures/basic-wash.png',
+		image: basicWashImg,
 		category: 'regular',
 	},
 	{
@@ -34,7 +38,7 @@ const pricingData = [
 		],
 		popular: true,
 		buttonText: '2-3 Day Turnaround',
-		image: 'src/components/pictures/premium-wash.png',
+		image: premiumWashImg,
 		category: 'premium',
 	},
 	{
@@ -50,7 +54,7 @@ const pricingData = [
 		],
 		popular: false,
 		buttonText: '24-Hour Turnaround',
-		image: 'src/components/pictures/express-services.png',
+		image: expressServicesImg,
 		category: 'express',
 	},
 ];

@@ -14,6 +14,9 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { useState } from "react";
+import dryCleaningImg from './pictures/dryCleaning.png';
+import ironingImg from './pictures/ironing.png';
+import washingImg from './pictures/washing.png';
 
 const floatAnimation = {
   initial: { y: 0 },
@@ -55,7 +58,7 @@ const Services = () => {
     {
       title: "Dry Cleaning",
       description: "Professional dry cleaning",
-      image: "src/components/pictures/dryCleaning.png",
+      image: dryCleaningImg,
       alt: "Dry Cleaning",
       animation: pulseAnimation,
       details: [
@@ -69,7 +72,7 @@ const Services = () => {
     {
       title: "Ironing",
       description: "Professional ironing services",
-      image: "src/components/pictures/ironing.png",
+      image: ironingImg,
       alt: "Ironing",
       animation: floatAnimation,
       details: [
@@ -83,7 +86,7 @@ const Services = () => {
     {
       title: "Washing",
       description: "Quality washing for all fabrics",
-      image: "src/components/pictures/washing.png",
+      image: washingImg,
       alt: "Washing",
       animation: pulseAnimation,
       details: [
