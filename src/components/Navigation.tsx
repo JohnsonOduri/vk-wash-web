@@ -87,7 +87,7 @@ const Navigation = () => {
   // Navigation links for dashboard pages and other non-landing pages
   const otherPagesLinks = [
     { name: 'Home', href: '/', onClick: handleHomeClick },
-    { name: 'Reviews', href: '/reviews', onClick: handleReviewsClick },
+
     { name: 'Privacy Policy', href: '/privacy-policy', onClick: handlePrivacyPolicyClick },
     { 
       name: 'Dashboard', 
