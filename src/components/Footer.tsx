@@ -18,36 +18,11 @@ const Footer = () => {
             </p>
           </div>
           
-          <div>
-            <h4 className="text-lg font-bold mb-4">Quick Links</h4>
-            <ul className="space-y-2">
-              {[
-                { text: 'Home', href: '#home' },
-                { text: 'Services', href: '#services' },
-                { text: 'Pricing', href: '#pricing' },
-                { text: 'About Us', href: '#about' },
-                { text: 'Contact', href: '#contact' }
-              ].map((link, index) => (
-                <li key={index}>
-                  <a 
-                    href={link.href} 
-                    className="text-gray-400 hover:text-white transition-colors"
-                  >
-                    {link.text}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
           
           <div>
-            <h4 className="text-lg font-bold mb-4">Contact</h4>
-            <address className="not-italic text-gray-400 space-y-2">
-              <p>Vattinagulapally, Gandipet </p>
-              <p>Hyderabad , 500075</p>
-              <p>Phone: +91 8106549413</p>
-              <p>Email: vkwashexpress@gmail.com</p>
-            </address>
+
+             
+
             
             <div className="mt-6">
               <div className="flex space-x-4">
@@ -60,9 +35,21 @@ const Footer = () => {
                   >
                   </a>
                 ))}
+                
               </div>
+              
             </div>
+            
           </div>
+           <div>
+              <h4 className="text-lg font-bold mb-4 text-right">Contact</h4>
+              <address className="not-italic text-gray-400 space-y-2 text-right">
+                <p>Vattinagulapally, Gandipet </p>
+                <p>Hyderabad , 500075</p>
+                <p>Phone: +91 8106549413</p>
+                <p>Email: vkwashexpress@gmail.com</p>
+              </address>
+              </div>
         </div>
         
         <div className="border-t border-gray-800 mt-8 pt-8 text-gray-500 text-sm text-center">
