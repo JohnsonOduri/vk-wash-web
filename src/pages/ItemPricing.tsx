@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Navigation from "@/components/Navigation";
@@ -103,7 +102,7 @@ const ItemPricing = () => {
                         <div>
                           <div className="text-sm text-gray-500 mb-1">Price per item</div>
                           <div className="text-2xl font-bold flex items-center">
-                            <DollarSign className="h-5 w-5 text-green-600" />
+                            <span className="text-green-600 mr-1">₹</span>
                             {item.price.toFixed(2)}
                           </div>
                         </div>
