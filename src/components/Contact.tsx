@@ -82,7 +82,7 @@ const Contact = () => {
                       className="w-10 h-10 rounded-full bg-blue bg-opacity-10 flex items-center justify-center text-blue hover:bg-opacity-20 transition-colors"
                     >
                       <img 
-                        src="/public/lovable-uploads/pictures/Whatsapp.jpg" 
+                        src=":public/lovable-uploads/Whatsapp.jpg" 
                         alt="WhatsApp" 
                         className="w-6 h-6"
                       />
