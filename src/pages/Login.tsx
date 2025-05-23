@@ -12,8 +12,8 @@ import { toast } from "@/hooks/use-toast";
 const Login = () => {
   const [error, setError] = useState("");
   const navigate = useNavigate();
-  const { user } = useFirebaseAuth();
-  
+  const { user } = useFirebaseAuth(); // <-- Only call the hook here
+
   useEffect(() => {
     // Check if user is already logged in and redirect accordingly
     if (user) {
@@ -26,8 +26,7 @@ const Login = () => {
   }, [user, navigate]);
 
   const handleCustomerLogin = () => {
-    const { user } = useFirebaseAuth();
-    // Check if user is trying to use wrong login section
+    // Use the user variable from the top-level hook
     if (user?.role === "delivery") {
       setError("You are logged in as Delivery Staff. Please use the Delivery Staff Login section.");
       toast({
@@ -42,8 +41,7 @@ const Login = () => {
   };
 
   const handleDeliveryLogin = () => {
-    const { user } = useFirebaseAuth();
-    // Check if user is trying to use wrong login section
+    // Use the user variable from the top-level hook
     if (user?.role === "customer") {
       setError("You are logged in as a Customer. Please use the Customer Login section.");
       toast({
