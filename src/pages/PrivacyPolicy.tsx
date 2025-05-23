@@ -52,6 +52,9 @@ const PrivacyPolicy = () => {
               <li>These Terms and any dispute or claim relating to it, or its enforceability, shall be governed by and construed in accordance with the laws of India.</li>
               <li>All disputes arising out of or in connection with these Terms shall be subject to the exclusive jurisdiction of the courts in Hyderabad and Telangana.</li>
               <li>All concerns or communications relating to these Terms must be communicated to us using the contact information provided on this website.</li>
+              <li>
+                <span className="font-semibold text-red-600">Refund Policy:</span> REFUND IS NOT APPLICABLE ON THE WEBSITE.
+              </li>
             </ol>
           </section>
           <section>
