@@ -15,6 +15,7 @@ import { getBillsByCustomerId, updateBillPayment, getBillsByOrderId } from '@/se
 import { getOrdersByUser } from '@/services/orderService';
 import { getOrderById } from '@/services/orderService';
 import { Bill } from '@/models/LaundryItem';
+import PhonePePayment from '@/components/payments/PhonePePayment';
 
 const PaymentOptions = [
   {
@@ -27,7 +28,11 @@ const PaymentOptions = [
     name: 'UPI',
     description: 'Pay via UPI (Google Pay, PhonePe, etc.)',
   },
-  
+  {
+    id: 'phonepe',
+    name: 'PhonePe',
+    description: 'Pay online with PhonePe',
+  },
 ];
 
 const BillViewer = ({ customerId }) => {
@@ -39,6 +44,7 @@ const BillViewer = ({ customerId }) => {
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('cash');
   const [pendingCashPayment, setPendingCashPayment] = useState<{ billId: string, method: string } | null>(null);
+  const [showPhonePePayment, setShowPhonePePayment] = useState(false);
 
   useEffect(() => {
     if (customerId) {
@@ -160,10 +166,16 @@ const BillViewer = ({ customerId }) => {
     setSelectedBill(bill);
     setIsPaymentDialogOpen(true);
     setSelectedPaymentMethod('cash');
+    setShowPhonePePayment(false);
   };
 
   const handleProcessPayment = async () => {
     if (!selectedBill) return;
+
+    if (selectedPaymentMethod === 'phonepe') {
+      setShowPhonePePayment(true);
+      return;
+    }
 
     if (selectedPaymentMethod === 'cash' || selectedPaymentMethod === 'upi') {
       // For cash or UPI, mark as pending verification
@@ -192,6 +204,28 @@ const BillViewer = ({ customerId }) => {
         variant: 'destructive'
       });
     }
+  };
+
+  const handlePhonePePaymentSuccess = async () => {
+    if (!selectedBill) return;
+    
+    try {
+      await updateBillPayment(selectedBill.id, 'phonepe');
+      setIsPaymentDialogOpen(false);
+      setShowPhonePePayment(false);
+      loadBillsAndOrders();
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      toast({
+        title: 'Error',
+        description: 'Payment was successful but failed to update status',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handlePhonePePaymentCancel = () => {
+    setShowPhonePePayment(false);
   };
 
   const getPaymentMethodName = (methodId: string) => {
@@ -341,31 +375,43 @@ const BillViewer = ({ customerId }) => {
             <DialogTitle>Choose Payment Method</DialogTitle>
           </DialogHeader>
           
-          <div className="py-4">
-            {selectedBill && (
-              <div className="mb-4 p-3 bg-gray-50 rounded-md">
-                <div className="text-sm text-gray-500">Bill Total</div>
-                <div className="text-lg font-bold">₹{typeof selectedBill.total === 'number' ? selectedBill.total.toFixed(2) : "₹0.00"}</div> {/* Safely format selectedBill.total */}
+          {showPhonePePayment && selectedBill ? (
+            <PhonePePayment
+              bill={selectedBill}
+              customerPhone={orders.find(o => o.id === selectedBill.orderId)?.customerPhone || ''}
+              userId={customerId}
+              onPaymentSuccess={handlePhonePePaymentSuccess}
+              onCancel={handlePhonePePaymentCancel}
+            />
+          ) : (
+            <>
+              <div className="py-4">
+                {selectedBill && (
+                  <div className="mb-4 p-3 bg-gray-50 rounded-md">
+                    <div className="text-sm text-gray-500">Bill Total</div>
+                    <div className="text-lg font-bold">₹{typeof selectedBill.total === 'number' ? selectedBill.total.toFixed(2) : "₹0.00"}</div>
+                  </div>
+                )}
+                
+                <RadioGroup value={selectedPaymentMethod} onValueChange={setSelectedPaymentMethod} className="gap-4">
+                  {PaymentOptions.map(option => (
+                    <div key={option.id} className="flex items-center space-x-2">
+                      <RadioGroupItem value={option.id} id={option.id} />
+                      <Label htmlFor={option.id} className="flex flex-col cursor-pointer">
+                        <span className="font-medium">{option.name}</span>
+                        <span className="text-sm text-gray-500">{option.description}</span>
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
               </div>
-            )}
-            
-            <RadioGroup value={selectedPaymentMethod} onValueChange={setSelectedPaymentMethod} className="gap-4">
-              {PaymentOptions.map(option => (
-                <div key={option.id} className="flex items-center space-x-2">
-                  <RadioGroupItem value={option.id} id={option.id} />
-                  <Label htmlFor={option.id} className="flex flex-col cursor-pointer">
-                    <span className="font-medium">{option.name}</span>
-                    <span className="text-sm text-gray-500">{option.description}</span>
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsPaymentDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleProcessPayment}>Process Payment</Button>
-          </DialogFooter>
+              
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsPaymentDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleProcessPayment}>Process Payment</Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 

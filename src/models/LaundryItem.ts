@@ -2,34 +2,30 @@
 export interface LaundryItem {
   id: string;
   name: string;
+  category: string;
   price: number;
-  category: "regular" | "premium" | "express";
   description?: string;
-  createdAt: Date;
-  status?: string;
-  quantity?: number;
-  customerId?: string;
-  updatedAt?: Date;
 }
 
-export interface OrderItem extends LaundryItem {
+export interface OrderItem {
+  name: string;
   quantity: number;
-  total: number;
+  price: number;
+  category?: string;
+  total?: number;
 }
 
 export interface Bill {
-  id?: string;
+  id: string;
+  orderId: string;
   customerId: string;
-  customerName: string;
-  customerPhone: string;
-  date?: Date;
-  createdAt?: Date;
   items: OrderItem[];
   subtotal: number;
-  tax: number; // Added tax property
+  tax: number;
   total: number;
-  status?: 'pending' | 'paid' | 'cancelled';
-  paymentMethod?: 'cash' | 'online' | 'card' | 'upi';
-  paymentDate?: Date;
-  orderId?: string;
+  status: 'pending' | 'paid';
+  paymentMethod?: 'cash' | 'upi' | 'card' | 'phonepe';
+  createdAt: Date;
+  date?: Date;
+  paidAt?: Date;
 }
