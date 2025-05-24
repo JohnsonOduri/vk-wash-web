@@ -101,7 +101,10 @@ const CreateBill = ({ orderId, customerInfo }) => {
     } else {
       // Add new item to the order with quantity 1
       const newOrderItem: OrderItem = {
-        ...item,
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        category: item.category,
         quantity: 1,
         total: item.price
       };
@@ -439,7 +442,7 @@ const CreateBill = ({ orderId, customerInfo }) => {
                             variant="outline" 
                             size="icon" 
                             className="h-8 w-8"
-                            onClick={() => updateItemQuantity(item.id, item.quantity - 1)}
+                            onClick={() => updateItemQuantity(item.id!, item.quantity - 1)}
                           >
                             <Minus className="h-4 w-4" />
                           </Button>
@@ -448,7 +451,7 @@ const CreateBill = ({ orderId, customerInfo }) => {
                             variant="outline" 
                             size="icon" 
                             className="h-8 w-8"
-                            onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
+                            onClick={() => updateItemQuantity(item.id!, item.quantity + 1)}
                           >
                             <Plus className="h-4 w-4" />
                           </Button>
@@ -456,13 +459,13 @@ const CreateBill = ({ orderId, customerInfo }) => {
                             variant="ghost" 
                             size="icon" 
                             className="h-8 w-8 text-red-500"
-                            onClick={() => removeItemFromOrder(item.id)}
+                            onClick={() => removeItemFromOrder(item.id!)}
                           >
                             <Trash className="h-4 w-4" />
                           </Button>
                         </div>
                         <div className="w-24 text-right font-medium">
-                          ₹{item.total.toFixed(2)}
+                          ₹{item.total!.toFixed(2)}
                         </div>
                       </div>
                     ))}

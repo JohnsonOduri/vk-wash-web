@@ -8,6 +8,7 @@ export interface LaundryItem {
 }
 
 export interface OrderItem {
+  id?: string;
   name: string;
   quantity: number;
   price: number;
@@ -23,9 +24,10 @@ export interface Bill {
   subtotal: number;
   tax: number;
   total: number;
-  status: 'pending' | 'paid';
+  status: 'pending' | 'paid' | 'partial';
   paymentMethod?: 'cash' | 'upi' | 'card' | 'phonepe';
   createdAt: Date;
   date?: Date;
   paidAt?: Date;
+  paidAmount?: number;
 }
