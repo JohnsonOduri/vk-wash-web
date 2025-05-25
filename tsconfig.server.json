@@ -1,8 +1,8 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "CommonJS",
+    "target": "es2019",
+    "module": "commonjs",
     "moduleResolution": "node",
     "esModuleInterop": true,
     "strict": true,
@@ -10,6 +10,6 @@
     "rootDir": ".",
     "skipLibCheck": true
   },
-  "include": ["server.ts", "server/**/*"],
+  "include": ["server.ts", "server/**/*.ts"],
   "exclude": ["node_modules"]
 }
