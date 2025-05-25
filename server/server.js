@@ -186,31 +186,10 @@ app.get('/payment-status/:transactionId', async (req, res) => {
 });
 
 // Payment status POST route (for callbacks or direct status checks)
-app.post('/payment-status', async (req, res) => {
-    try {
-        // Accept transactionId from body or query
-        const transactionId = req.body.transactionId || req.query.transactionId;
-        if (!transactionId) {
-            return res.status(400).json({ error: "Missing transactionId" });
-        }
-        const stringToHash = `/pg/v1/status/${CLIENT_ID}/${transactionId}` + CLIENT_KEY;
-        const hash = crypto.createHash('sha256').update(stringToHash).digest('hex');
-        const xVerify = `${hash}###${CLIENT_INDEX}`;
-
-        const response = await axios.get(
-            `${BASE_URL}/status/${CLIENT_ID}/${transactionId}`,
-            {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-VERIFY': xVerify
-                }
-            }
-        );
-        res.json(response.data);
-    } catch (error) {
-        console.error('POST /payment-status error:', error);
-        res.status(500).json({ error: error.message });
-    }
+app.post('/payment-status', (req, res) => {
+    console.log('Webhook payload:', req.body);
+    // Temporarily bypass PhonePe API call for quick test
+    res.json({ message: 'Webhook received successfully' });
 });
 
 // --- SDK Order Creation Endpoint ---
