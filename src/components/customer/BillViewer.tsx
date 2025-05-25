@@ -1,20 +1,20 @@
 import { useState, useEffect } from 'react';
-import { toast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+// Update the import path below to the correct relative path if needed
+import { toast } from '../../hooks/use-toast';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../ui/card';
+import { Button } from '../ui/button';
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
   DialogFooter 
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { getBillsByCustomerId, updateBillPayment, getBillsByOrderId } from '@/services/laundryItemService';
-import { getOrdersByUser } from '@/services/orderService';
-import { getOrderById } from '@/services/orderService';
-import { Bill } from '@/models/LaundryItem';
+} from '../ui/dialog';
+import { Label } from '../ui/label';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import { getBillsByCustomerId, updateBillPayment, getBillsByOrderId } from '../../services/laundryItemService';
+import { getOrdersByUser } from '../../services/orderService';
+import { Bill } from '../../models/LaundryItem';
 
 const PaymentOptions = [
   {
@@ -61,13 +61,13 @@ const BillViewer = ({ customerId }) => {
       for (const order of fetchedOrders) {
         if (order.id) {
           try {
-            const bill = await getBillsByOrderId(order.id);
+            const bill = await getBillsByOrderId(order.id) as Bill | null;
             if (bill) billsByOrder.push(bill);
           } catch {}
           // Map orderId to items for quick lookup (prefer bill items if available, else order items)
-          let billForOrder = null;
+          let billForOrder: Bill | null = null;
           try {
-            billForOrder = await getBillsByOrderId(order.id);
+            billForOrder = await getBillsByOrderId(order.id) as Bill | null;
           } catch {}
           if (billForOrder && billForOrder.items && billForOrder.items.length > 0) {
             itemsMap[order.id] = billForOrder.items;
@@ -165,19 +165,46 @@ const BillViewer = ({ customerId }) => {
   const handleProcessPayment = async () => {
     if (!selectedBill) return;
 
-    if (selectedPaymentMethod === 'cash' || selectedPaymentMethod === 'upi') {
-      // For cash or UPI, mark as pending verification
-      setPendingCashPayment({ billId: selectedBill.id, method: selectedPaymentMethod });
+    if (selectedPaymentMethod === 'cash') {
+      setPendingCashPayment({ billId: selectedBill.id ?? '', method: selectedPaymentMethod });
       setIsPaymentDialogOpen(false);
       toast({
-        title: `${selectedPaymentMethod === 'cash' ? 'Cash' : 'UPI'} Payment Initiated`,
+        title: 'Cash Payment Initiated',
         description: `Please complete the payment with the delivery staff. Your payment will be marked as paid after verification.`,
       });
       return;
     }
 
+    if (selectedPaymentMethod === 'upi') {
+      try {
+        const res = await fetch('https://vkwash.in/api/phonepe/payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            billId: selectedBill.id,
+            amount: Math.round(selectedBill.total * 100), // in paise
+            customerId,
+            orderId: selectedBill.orderId,
+            customerPhone: selectedBill.customerPhone,
+            name: selectedBill.customerName || "VK Wash Customer"
+          }),
+        });
+        if (!res.ok) throw new Error('Failed to initiate payment');
+        const { paymentUrl } = await res.json();
+        setIsPaymentDialogOpen(false);
+        window.location.href = paymentUrl; // Redirect to PhonePe
+      } catch (error) {
+        toast({
+          title: 'Payment Error',
+          description: 'Could not initiate UPI payment. Please try again.',
+          variant: 'destructive',
+        });
+      }
+      return;
+    }
+
     try {
-      await updateBillPayment(selectedBill.id, selectedPaymentMethod as Bill['paymentMethod']);
+      await updateBillPayment(selectedBill.id ?? '', selectedPaymentMethod as Bill['paymentMethod']);
       toast({
         title: 'Payment Successful',
         description: `Payment of ₹${selectedBill.total.toFixed(2)} completed via ${getPaymentMethodName(selectedPaymentMethod)}`
@@ -369,19 +396,17 @@ const BillViewer = ({ customerId }) => {
         </DialogContent>
       </Dialog>
 
-      {/* Show info dialog if cash or upi payment is pending verification */}
-      <Dialog open={!!pendingCashPayment} onOpenChange={() => setPendingCashPayment(null)}>
+      {/* Show info dialog if cash payment is pending verification */}
+      <Dialog open={!!pendingCashPayment && pendingCashPayment.method === 'cash'} onOpenChange={() => setPendingCashPayment(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {pendingCashPayment?.method === 'upi'
-                ? 'UPI Payment Pending Verification'
-                : 'Cash Payment Pending Verification'}
+              Cash Payment Pending Verification
             </DialogTitle>
           </DialogHeader>
           <div className="py-4">
             <p>
-              Your {pendingCashPayment?.method === 'upi' ? 'UPI' : 'cash'} payment will be marked as paid after the delivery staff verifies the payment. Please complete the payment with the staff.
+              Your cash payment will be marked as paid after the delivery staff verifies the payment. Please complete the payment with the staff.
             </p>
           </div>
           <DialogFooter>
