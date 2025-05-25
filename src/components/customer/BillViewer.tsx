@@ -1,20 +1,21 @@
 import { useState, useEffect } from 'react';
-// Update the import path below to the correct relative path if needed
-import { toast } from '../../hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../ui/card';
-import { Button } from '../ui/button';
+import { toast } from '@/hooks/use-toast';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
   DialogFooter 
-} from '../ui/dialog';
-import { Label } from '../ui/label';
-import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
-import { getBillsByCustomerId, updateBillPayment, getBillsByOrderId } from '../../services/laundryItemService';
-import { getOrdersByUser } from '../../services/orderService';
-import { Bill } from '../../models/LaundryItem';
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { getBillsByCustomerId, updateBillPayment, getBillsByOrderId } from '@/services/laundryItemService';
+import { getOrdersByUser } from '@/services/orderService';
+import { getOrderById } from '@/services/orderService';
+import { Bill } from '@/models/LaundryItem';
+import PhonePePayment from '@/components/payments/PhonePePayment';
 
 const PaymentOptions = [
   {
@@ -27,7 +28,11 @@ const PaymentOptions = [
     name: 'UPI',
     description: 'Pay via UPI (Google Pay, PhonePe, etc.)',
   },
-  
+  {
+    id: 'phonepe',
+    name: 'PhonePe',
+    description: 'Pay online with PhonePe',
+  },
 ];
 
 const BillViewer = ({ customerId }) => {
@@ -39,6 +44,7 @@ const BillViewer = ({ customerId }) => {
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('cash');
   const [pendingCashPayment, setPendingCashPayment] = useState<{ billId: string, method: string } | null>(null);
+  const [showPhonePePayment, setShowPhonePePayment] = useState(false);
 
   useEffect(() => {
     if (customerId) {
@@ -61,13 +67,13 @@ const BillViewer = ({ customerId }) => {
       for (const order of fetchedOrders) {
         if (order.id) {
           try {
-            const bill = await getBillsByOrderId(order.id) as Bill | null;
+            const bill = await getBillsByOrderId(order.id);
             if (bill) billsByOrder.push(bill);
           } catch {}
           // Map orderId to items for quick lookup (prefer bill items if available, else order items)
-          let billForOrder: Bill | null = null;
+          let billForOrder = null;
           try {
-            billForOrder = await getBillsByOrderId(order.id) as Bill | null;
+            billForOrder = await getBillsByOrderId(order.id);
           } catch {}
           if (billForOrder && billForOrder.items && billForOrder.items.length > 0) {
             itemsMap[order.id] = billForOrder.items;
@@ -160,51 +166,30 @@ const BillViewer = ({ customerId }) => {
     setSelectedBill(bill);
     setIsPaymentDialogOpen(true);
     setSelectedPaymentMethod('cash');
+    setShowPhonePePayment(false);
   };
 
   const handleProcessPayment = async () => {
     if (!selectedBill) return;
 
-    if (selectedPaymentMethod === 'cash') {
-      setPendingCashPayment({ billId: selectedBill.id ?? '', method: selectedPaymentMethod });
+    if (selectedPaymentMethod === 'phonepe') {
+      setShowPhonePePayment(true);
+      return;
+    }
+
+    if (selectedPaymentMethod === 'cash' || selectedPaymentMethod === 'upi') {
+      // For cash or UPI, mark as pending verification
+      setPendingCashPayment({ billId: selectedBill.id, method: selectedPaymentMethod });
       setIsPaymentDialogOpen(false);
       toast({
-        title: 'Cash Payment Initiated',
+        title: `${selectedPaymentMethod === 'cash' ? 'Cash' : 'UPI'} Payment Initiated`,
         description: `Please complete the payment with the delivery staff. Your payment will be marked as paid after verification.`,
       });
       return;
     }
 
-    if (selectedPaymentMethod === 'upi') {
-      try {
-        const res = await fetch('https://vkwash.in/api/phonepe/payment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            billId: selectedBill.id,
-            amount: Math.round(selectedBill.total * 100), // in paise
-            customerId,
-            orderId: selectedBill.orderId,
-            customerPhone: selectedBill.customerPhone,
-            name: selectedBill.customerName || "VK Wash Customer"
-          }),
-        });
-        if (!res.ok) throw new Error('Failed to initiate payment');
-        const { paymentUrl } = await res.json();
-        setIsPaymentDialogOpen(false);
-        window.location.href = paymentUrl; // Redirect to PhonePe
-      } catch (error) {
-        toast({
-          title: 'Payment Error',
-          description: 'Could not initiate UPI payment. Please try again.',
-          variant: 'destructive',
-        });
-      }
-      return;
-    }
-
     try {
-      await updateBillPayment(selectedBill.id ?? '', selectedPaymentMethod as Bill['paymentMethod']);
+      await updateBillPayment(selectedBill.id, selectedPaymentMethod as Bill['paymentMethod']);
       toast({
         title: 'Payment Successful',
         description: `Payment of ₹${selectedBill.total.toFixed(2)} completed via ${getPaymentMethodName(selectedPaymentMethod)}`
@@ -219,6 +204,28 @@ const BillViewer = ({ customerId }) => {
         variant: 'destructive'
       });
     }
+  };
+
+  const handlePhonePePaymentSuccess = async () => {
+    if (!selectedBill) return;
+    
+    try {
+      await updateBillPayment(selectedBill.id, 'phonepe');
+      setIsPaymentDialogOpen(false);
+      setShowPhonePePayment(false);
+      loadBillsAndOrders();
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      toast({
+        title: 'Error',
+        description: 'Payment was successful but failed to update status',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handlePhonePePaymentCancel = () => {
+    setShowPhonePePayment(false);
   };
 
   const getPaymentMethodName = (methodId: string) => {
@@ -368,45 +375,59 @@ const BillViewer = ({ customerId }) => {
             <DialogTitle>Choose Payment Method</DialogTitle>
           </DialogHeader>
           
-          <div className="py-4">
-            {selectedBill && (
-              <div className="mb-4 p-3 bg-gray-50 rounded-md">
-                <div className="text-sm text-gray-500">Bill Total</div>
-                <div className="text-lg font-bold">₹{typeof selectedBill.total === 'number' ? selectedBill.total.toFixed(2) : "₹0.00"}</div> {/* Safely format selectedBill.total */}
+          {showPhonePePayment && selectedBill ? (
+            <PhonePePayment
+              bill={selectedBill}
+              customerPhone={orders.find(o => o.id === selectedBill.orderId)?.customerPhone || ''}
+              userId={customerId}
+              onPaymentSuccess={handlePhonePePaymentSuccess}
+              onCancel={handlePhonePePaymentCancel}
+            />
+          ) : (
+            <>
+              <div className="py-4">
+                {selectedBill && (
+                  <div className="mb-4 p-3 bg-gray-50 rounded-md">
+                    <div className="text-sm text-gray-500">Bill Total</div>
+                    <div className="text-lg font-bold">₹{typeof selectedBill.total === 'number' ? selectedBill.total.toFixed(2) : "₹0.00"}</div>
+                  </div>
+                )}
+                
+                <RadioGroup value={selectedPaymentMethod} onValueChange={setSelectedPaymentMethod} className="gap-4">
+                  {PaymentOptions.map(option => (
+                    <div key={option.id} className="flex items-center space-x-2">
+                      <RadioGroupItem value={option.id} id={option.id} />
+                      <Label htmlFor={option.id} className="flex flex-col cursor-pointer">
+                        <span className="font-medium">{option.name}</span>
+                        <span className="text-sm text-gray-500">{option.description}</span>
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
               </div>
-            )}
-            
-            <RadioGroup value={selectedPaymentMethod} onValueChange={setSelectedPaymentMethod} className="gap-4">
-              {PaymentOptions.map(option => (
-                <div key={option.id} className="flex items-center space-x-2">
-                  <RadioGroupItem value={option.id} id={option.id} />
-                  <Label htmlFor={option.id} className="flex flex-col cursor-pointer">
-                    <span className="font-medium">{option.name}</span>
-                    <span className="text-sm text-gray-500">{option.description}</span>
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsPaymentDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleProcessPayment}>Process Payment</Button>
-          </DialogFooter>
+              
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsPaymentDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleProcessPayment}>Process Payment</Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
-      {/* Show info dialog if cash payment is pending verification */}
-      <Dialog open={!!pendingCashPayment && pendingCashPayment.method === 'cash'} onOpenChange={() => setPendingCashPayment(null)}>
+      {/* Show info dialog if cash or upi payment is pending verification */}
+      <Dialog open={!!pendingCashPayment} onOpenChange={() => setPendingCashPayment(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Cash Payment Pending Verification
+              {pendingCashPayment?.method === 'upi'
+                ? 'UPI Payment Pending Verification'
+                : 'Cash Payment Pending Verification'}
             </DialogTitle>
           </DialogHeader>
           <div className="py-4">
             <p>
-              Your cash payment will be marked as paid after the delivery staff verifies the payment. Please complete the payment with the staff.
+              Your {pendingCashPayment?.method === 'upi' ? 'UPI' : 'cash'} payment will be marked as paid after the delivery staff verifies the payment. Please complete the payment with the staff.
             </p>
           </div>
           <DialogFooter>

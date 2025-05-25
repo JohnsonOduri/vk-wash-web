@@ -1,4 +1,0 @@
-{
-  "watch": ["server.ts", "server/**/*"],
-  "ext": "ts"
-}
