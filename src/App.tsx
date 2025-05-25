@@ -11,6 +11,7 @@ import Reviews from "./pages/Reviews";
 import ItemPricing from "./pages/ItemPricing";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import PaymentStatusPage from "./pages/payment-status";
+import PaymentSuccess from "./pages/payment-success";
 
 import NotFound from "./pages/NotFound";
 import { FirebaseAuthProvider } from "./contexts/FirebaseAuthContext";
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/item-pricing/:category" element={<ItemPricing />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/payment-status" element={<PaymentStatusPage />} />
+            <Route path="/payment-success" element={<PaymentSuccess />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

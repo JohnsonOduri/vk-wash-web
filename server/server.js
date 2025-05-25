@@ -28,7 +28,7 @@ const CLIENT_INDEX = process.env.CLIENT_INDEX;
 const BASE_URL =
   process.env.PHONEPE_BASE_URL ||
   'https://api.phonepe.com/apis/hermes/pg/v1';
-const APP_BE_URL = process.env.APP_BE_URL || 'https://vkwash.in';
+const APP_BE_URL = process.env.APP_BE_URL || 'https://vk-wash-web.onrender.com';
 
 // Validate required env variables at startup
 if (!CLIENT_ID || !CLIENT_KEY || !CLIENT_INDEX) {
@@ -75,7 +75,7 @@ app.post('/payment', async (req, res) => {
         }
 
         // Use provided or default URLs
-        const finalRedirectUrl = redirectUrl || 'https://vkwash.in/payment-status?merchantTransactionId=' + merchantTransactionId;
+        const finalRedirectUrl = redirectUrl || 'https://vkwash.in/payment-success?merchantTransactionId=' + merchantTransactionId;
         const finalCallbackUrl = callbackUrl || `${APP_BE_URL}/payment-status`;
 
         console.log('finalRedirectUrl:', finalRedirectUrl);
