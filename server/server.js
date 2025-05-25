@@ -1,0 +1,301 @@
+import express from 'express';
+import axios from 'axios';
+import crypto from 'crypto';
+import dotenv from 'dotenv';
+import cors from 'cors';
+import pkg from 'pg-sdk-node';
+const {
+  StandardCheckoutPayRequest,
+  OrderStatusResponse,
+  StandardCheckoutClient,
+  Env,
+  CreateSdkOrderRequest
+} = pkg;
+import { randomUUID } from 'crypto';
+
+dotenv.config();
+
+const app = express();
+app.use(cors({
+  origin: 'http://localhost:8080'
+}));
+app.use(express.json());
+
+// Use client credentials from env
+const CLIENT_ID = process.env.CLIENT_ID;
+const CLIENT_KEY = process.env.CLIENT_KEY;
+const CLIENT_INDEX = process.env.CLIENT_INDEX;
+const BASE_URL =
+  process.env.PHONEPE_BASE_URL ||
+  'https://api.phonepe.com/apis/hermes/pg/v1';
+const APP_BE_URL = process.env.APP_BE_URL || 'https://vkwash.in';
+
+// Validate required env variables at startup
+if (!CLIENT_ID || !CLIENT_KEY || !CLIENT_INDEX) {
+    console.error('Missing PhonePe credentials in environment variables.');
+    process.exit(1);
+}
+
+// Utility to generate X-VERIFY header (checksum)
+function generateXVerify(payload) {
+    const base64Payload = Buffer.from(JSON.stringify(payload)).toString('base64');
+    const stringToHash = base64Payload + '/pg/v1/pay' + CLIENT_KEY;
+    const hash = crypto.createHash('sha256').update(stringToHash).digest('hex');
+    // X-VERIFY format: <hash>###<saltIndex>
+    return `${hash}###${CLIENT_INDEX}`;
+}
+
+// Initiate payment route
+app.post('/payment', async (req, res) => {
+    try {
+        // Accept both merchantTransactionId and billId for compatibility
+        let { amount, merchantTransactionId, billId, redirectUrl, callbackUrl } = req.body;
+
+        // Use billId as merchantTransactionId if merchantTransactionId is not provided
+        if (!merchantTransactionId && billId) {
+            merchantTransactionId = billId;
+        }
+
+        // Log incoming request for debugging
+        console.log('--- /payment called ---');
+        console.log('Request body:', req.body);
+        console.log('amount:', amount, 'merchantTransactionId:', merchantTransactionId, 'billId:', billId);
+
+        // Ensure amount is a number
+        amount = Number(amount);
+        console.log('Parsed amount:', amount);
+
+        if (!amount || amount <= 0) {
+            console.log('Invalid amount:', amount);
+            return res.status(400).json({ error: "Invalid amount" });
+        }
+        if (!merchantTransactionId) {
+            console.log('Missing merchantTransactionId or billId');
+            return res.status(400).json({ error: "Missing merchantTransactionId or billId" });
+        }
+
+        // Use provided or default URLs
+        const finalRedirectUrl = redirectUrl || 'https://vkwash.in/payment-status?merchantTransactionId=' + merchantTransactionId;
+        const finalCallbackUrl = callbackUrl || `${APP_BE_URL}/payment-status`;
+
+        console.log('finalRedirectUrl:', finalRedirectUrl);
+        console.log('finalCallbackUrl:', finalCallbackUrl);
+
+        const payload = {
+            merchantId: CLIENT_ID,
+            merchantTransactionId,
+            amount: Math.round(amount * 100), // in paise
+            redirectUrl: finalRedirectUrl,
+            callbackUrl: finalCallbackUrl,
+            paymentInstrument: {
+                type: 'PAY_PAGE'
+            }
+        };
+
+        const base64Payload = Buffer.from(JSON.stringify(payload)).toString('base64');
+        const xVerify = generateXVerify(payload);
+
+        // Log for debugging
+        console.log('PhonePe PAY payload:', payload);
+        console.log('base64Payload:', base64Payload);
+        console.log('X-VERIFY:', xVerify);
+        console.log('X-MERCHANT-ID:', CLIENT_ID);
+
+        // Log all env variables and headers for debugging
+        console.log('ENV:', {
+            CLIENT_ID,
+            CLIENT_KEY,
+            CLIENT_INDEX,
+            BASE_URL
+        });
+
+        // Log headers before making the request
+        const headers = {
+            'Content-Type': 'application/json',
+            'X-VERIFY': xVerify,
+            'X-MERCHANT-ID': CLIENT_ID
+        };
+        console.log('Request headers:', headers);
+
+        let response;
+        try {
+            response = await axios.post(
+                `${BASE_URL}/pay`,
+                { request: base64Payload },
+                { headers }
+            );
+        } catch (err) {
+            if (err.response) {
+                // Enhanced error logging
+                console.error('PhonePe API error:', {
+                    status: err.response.status,
+                    data: err.response.data,
+                    url: `${BASE_URL}/pay`,
+                    payload: { request: base64Payload },
+                    headers
+                });
+                // Return all error details for debugging
+                return res.status(502).json({ 
+                    error: 'PhonePe API error', 
+                    details: err.response.data,
+                    status: err.response.status,
+                    url: `${BASE_URL}/pay`,
+                    payload: payload, // include the payload for debugging
+                    headers: headers // include headers for debugging
+                });
+            }
+            console.error('Unknown error during PhonePe API call:', err);
+            throw err;
+        }
+        res.json(response.data);
+    } catch (error) {
+        // Log all env variables for debugging KEY_NOT_CONFIGURED
+        console.log('PhonePe ENV:', {
+            CLIENT_ID,
+            CLIENT_KEY,
+            CLIENT_INDEX,
+            BASE_URL
+        });
+        console.error('Payment initiation error:', error);
+        res.status(500).json({ error: error.message, stack: error.stack });
+    }
+});
+
+// Payment status GET route
+app.get('/payment-status/:transactionId', async (req, res) => {
+    try {
+        const { transactionId } = req.params;
+        const stringToHash = `/pg/v1/status/${CLIENT_ID}/${transactionId}` + CLIENT_KEY;
+        const hash = crypto.createHash('sha256').update(stringToHash).digest('hex');
+        const xVerify = `${hash}###${CLIENT_INDEX}`;
+
+        const response = await axios.get(
+            `${BASE_URL}/status/${CLIENT_ID}/${transactionId}`,
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-VERIFY': xVerify
+                }
+            }
+        );
+
+        res.json(response.data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Payment status POST route (for callbacks or direct status checks)
+app.post('/payment-status', async (req, res) => {
+    try {
+        // Accept transactionId from body or query
+        const transactionId = req.body.transactionId || req.query.transactionId;
+        if (!transactionId) {
+            return res.status(400).json({ error: "Missing transactionId" });
+        }
+        const stringToHash = `/pg/v1/status/${CLIENT_ID}/${transactionId}` + CLIENT_KEY;
+        const hash = crypto.createHash('sha256').update(stringToHash).digest('hex');
+        const xVerify = `${hash}###${CLIENT_INDEX}`;
+
+        const response = await axios.get(
+            `${BASE_URL}/status/${CLIENT_ID}/${transactionId}`,
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-VERIFY': xVerify
+                }
+            }
+        );
+        res.json(response.data);
+    } catch (error) {
+        console.error('POST /payment-status error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- SDK Order Creation Endpoint ---
+app.post('/sdk-order', async (req, res) => {
+    try {
+        const clientId = process.env.CLIENT_ID;
+        const clientSecret = process.env.CLIENT_KEY;
+        const clientVersion = Number(process.env.CLIENT_INDEX) || 1;
+        const env = Env.SANDBOX; // Use Env.PRODUCTION for production
+
+        const client = StandardCheckoutClient.getInstance(clientId, clientSecret, clientVersion, env);
+
+        const { amount, redirectUrl } = req.body;
+        const merchantOrderId = randomUUID();
+
+        const request = CreateSdkOrderRequest.StandardCheckoutBuilder()
+            .merchantOrderId(merchantOrderId)
+            .amount(amount)
+            .redirectUrl(redirectUrl || "http://localhost:8080/payment-status?merchantOrderId=" + merchantOrderId)
+            .build();
+
+        const response = await client.createSdkOrder(request);
+        const token = response.token;
+        res.json({ token, merchantOrderId });
+    } catch (error) {
+        console.error('SDK Order creation error:', error);
+        res.status(500).json({ error: error.message, stack: error.stack });
+    }
+});
+
+// --- SDK Order Status Endpoint ---
+app.get('/sdk-order-status/:merchantOrderId', async (req, res) => {
+    try {
+        const clientId = process.env.CLIENT_ID;
+        const clientSecret = process.env.CLIENT_KEY;
+        const clientVersion = Number(process.env.CLIENT_INDEX) || 1;
+        const env = Env.SANDBOX; // Use Env.PRODUCTION for production
+
+        const client = StandardCheckoutClient.getInstance(clientId, clientSecret, clientVersion, env);
+
+        const { merchantOrderId } = req.params;
+        const response = await client.getOrderStatus(merchantOrderId);
+        res.json({ state: response.state, response });
+    } catch (error) {
+        console.error('SDK Order status error:', error);
+        res.status(500).json({ error: error.message, stack: error.stack });
+    }
+});
+
+// --- SDK Callback Validation Endpoint ---
+app.post('/sdk-validate-callback', async (req, res) => {
+    try {
+        const clientId = process.env.CLIENT_ID;
+        const clientSecret = process.env.CLIENT_KEY;
+        const clientVersion = Number(process.env.CLIENT_INDEX) || 1;
+        const env = Env.SANDBOX; // Use Env.PRODUCTION for production
+
+        const client = StandardCheckoutClient.getInstance(clientId, clientSecret, clientVersion, env);
+
+        const { usernameConfigured, passwordConfigured, authorizationHeaderData, callbackBodyString } = req.body;
+
+        const callbackResponse = client.validateCallback(
+            usernameConfigured,
+            passwordConfigured,
+            authorizationHeaderData,
+            callbackBodyString
+        );
+        res.json({ payload: callbackResponse.payload });
+    } catch (error) {
+        console.error('SDK Callback validation error:', error);
+        res.status(500).json({ error: error.message, stack: error.stack });
+    }
+});
+
+// Add this GET route for testing
+app.get('/payment', (req, res) => {
+    res.json({ message: "Payment endpoint is up. Use POST to initiate a payment." });
+});
+
+// Health check route
+app.get('/', (req, res) => {
+    res.json({ status: "VK Wash backend is running" });
+});
+
+const PORT = process.env.PORT || 5002;
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});

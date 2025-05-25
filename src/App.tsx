@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +10,7 @@ import DeliveryDashboard from "./pages/DeliveryDashboard";
 import Reviews from "./pages/Reviews";
 import ItemPricing from "./pages/ItemPricing";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import PaymentStatusPage from "./pages/payment-status";
 
 import NotFound from "./pages/NotFound";
 import { FirebaseAuthProvider } from "./contexts/FirebaseAuthContext";
@@ -33,7 +33,7 @@ const App = () => (
             <Route path="/reviews" element={<Reviews />} />
             <Route path="/item-pricing/:category" element={<ItemPricing />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-
+            <Route path="/payment-status" element={<PaymentStatusPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

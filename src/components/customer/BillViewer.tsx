@@ -162,16 +162,73 @@ const BillViewer = ({ customerId }) => {
     setSelectedPaymentMethod('cash');
   };
 
+  // Add this function to handle PhonePe payment initialization
+  const initiatePhonePePayment = async (bill: Bill) => {
+    try {
+      console.log('Initiating PhonePe payment for bill:', bill);
+      const response = await fetch("https://vkwash.in/payment", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          billId: bill.id,
+          amount: bill.total,
+          customerId,
+        }),
+      });
+      console.log('Raw response from /payment:', response);
+      const data = await response.json();
+      console.log('Parsed response from /payment:', data);
+      if (!response.ok) {
+        // Log error details for easier debugging
+        console.error('PhonePe API error details:', data.details);
+        console.error('PhonePe API payload sent:', data.payload);
+      }
+
+      if (data && data.paymentUrl) {
+        window.open(data.paymentUrl, '_blank');
+        return true;
+      } else {
+        toast({
+          title: 'PhonePe Payment Failed',
+          description: 'Could not initiate PhonePe payment. Please try again.',
+          variant: 'destructive',
+        });
+        return false;
+      }
+    } catch (error) {
+      console.error('Error in initiatePhonePePayment:', error);
+      toast({
+        title: 'PhonePe Payment Error',
+        description: 'There was an error initiating PhonePe payment.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
   const handleProcessPayment = async () => {
     if (!selectedBill) return;
 
-    if (selectedPaymentMethod === 'cash' || selectedPaymentMethod === 'upi') {
-      // For cash or UPI, mark as pending verification
+    if (selectedPaymentMethod === 'upi') {
+      // Initiate PhonePe payment
+      const success = await initiatePhonePePayment(selectedBill);
+      if (success) {
+        setPendingCashPayment({ billId: selectedBill.id, method: selectedPaymentMethod });
+        setIsPaymentDialogOpen(false);
+        toast({
+          title: 'UPI Payment Initiated',
+          description: 'Please complete the payment using PhonePe. Your payment will be marked as paid after verification.',
+        });
+      }
+      return;
+    }
+
+    if (selectedPaymentMethod === 'cash') {
       setPendingCashPayment({ billId: selectedBill.id, method: selectedPaymentMethod });
       setIsPaymentDialogOpen(false);
       toast({
-        title: `${selectedPaymentMethod === 'cash' ? 'Cash' : 'UPI'} Payment Initiated`,
-        description: `Please complete the payment with the delivery staff. Your payment will be marked as paid after verification.`,
+        title: 'Cash Payment Initiated',
+        description: 'Please complete the payment with the delivery staff. Your payment will be marked as paid after verification.',
       });
       return;
     }
