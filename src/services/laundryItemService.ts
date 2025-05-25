@@ -1,232 +1,300 @@
-
-import { collection, addDoc, getDocs, query, where, updateDoc, doc, getDoc, deleteDoc, orderBy } from 'firebase/firestore';
+import { 
+  collection, 
+  addDoc, 
+  getDocs, 
+  doc, 
+  getDoc, 
+  updateDoc, 
+  query, 
+  where, 
+  serverTimestamp,
+  Timestamp,
+  deleteDoc,
+  orderBy
+} from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { LaundryItem, Bill, OrderItem } from '@/models/LaundryItem';
 
-export const getLaundryItems = async (): Promise<LaundryItem[]> => {
-  try {
-    const querySnapshot = await getDocs(collection(db, 'laundryItems'));
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as LaundryItem));
-  } catch (error) {
-    console.error('Error getting laundry items:', error);
-    throw error;
-  }
+export const createLaundryItem = async (itemData: Partial<LaundryItem>): Promise<string> => {
+  const itemWithTimestamp = {
+    ...itemData,
+    createdAt: serverTimestamp(),
+    status: itemData.status || 'pending',
+    quantity: itemData.quantity || 1,
+    customerId: itemData.customerId || '',
+    updatedAt: serverTimestamp()
+  };
+
+  const docRef = await addDoc(collection(db, 'laundryItems'), itemWithTimestamp);
+  return docRef.id;
 };
 
 export const getAllLaundryItems = async (): Promise<LaundryItem[]> => {
-  return getLaundryItems();
+  const querySnapshot = await getDocs(collection(db, 'laundryItems'));
+  
+  const items: LaundryItem[] = [];
+  querySnapshot.forEach((doc) => {
+    const data = doc.data();
+    items.push({
+      id: doc.id,
+      name: data.name,
+      price: data.price,
+      category: data.category,
+      createdAt: data.createdAt?.toDate() || new Date(),
+      status: data.status || 'pending',
+      quantity: data.quantity || 1, 
+      customerId: data.customerId || '',
+      updatedAt: data.updatedAt?.toDate() || new Date()
+    } as LaundryItem);
+  });
+  
+  return items;
 };
 
 export const getLaundryItemByCategory = async (category: string): Promise<LaundryItem[]> => {
-  try {
-    const q = query(collection(db, 'laundryItems'), where('category', '==', category));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
+  const q = query(
+    collection(db, 'laundryItems'),
+    where('category', '==', category)
+  );
+  
+  const querySnapshot = await getDocs(q);
+  
+  const items: LaundryItem[] = [];
+  querySnapshot.forEach((doc) => {
+    const data = doc.data();
+    items.push({
       id: doc.id,
-      ...doc.data()
-    } as LaundryItem));
-  } catch (error) {
-    console.error('Error getting laundry items by category:', error);
-    throw error;
-  }
+      name: data.name,
+      price: data.price,
+      category: data.category,
+      createdAt: data.createdAt?.toDate() || new Date(),
+      status: data.status || 'pending',
+      quantity: data.quantity || 1, 
+      customerId: data.customerId || '',
+      updatedAt: data.updatedAt?.toDate() || new Date()
+    } as LaundryItem);
+  });
+  
+  return items;
 };
 
-export const addLaundryItem = async (item: Omit<LaundryItem, 'id'>): Promise<string> => {
-  try {
-    const docRef = await addDoc(collection(db, 'laundryItems'), item);
-    return docRef.id;
-  } catch (error) {
-    console.error('Error adding laundry item:', error);
-    throw error;
+export const getLaundryItemById = async (itemId: string): Promise<LaundryItem | null> => {
+  const docRef = doc(db, 'laundryItems', itemId);
+  const docSnap = await getDoc(docRef);
+  
+  if (docSnap.exists()) {
+    const data = docSnap.data();
+    return {
+      id: docSnap.id,
+      name: data.name,
+      price: data.price,
+      category: data.category,
+      createdAt: data.createdAt?.toDate() || new Date(),
+      status: data.status || 'pending',
+      quantity: data.quantity || 1,
+      customerId: data.customerId || '',
+      updatedAt: data.updatedAt?.toDate() || new Date()
+    } as LaundryItem;
   }
+  
+  return null;
 };
 
-export const createLaundryItem = async (item: Omit<LaundryItem, 'id'>): Promise<string> => {
-  return addLaundryItem(item);
+export const deleteLaundryItem = async (itemId: string): Promise<void> => {
+  const docRef = doc(db, 'laundryItems', itemId);
+  await deleteDoc(docRef);
 };
 
-export const updateLaundryItem = async (id: string, item: Partial<LaundryItem>): Promise<void> => {
-  try {
-    const itemRef = doc(db, 'laundryItems', id);
-    await updateDoc(itemRef, item);
-  } catch (error) {
-    console.error('Error updating laundry item:', error);
-    throw error;
-  }
-};
+export const createBill = async (billData: Omit<Bill, 'id' | 'status' | 'createdAt'>): Promise<string> => {
+  const billWithDetails = {
+    ...billData,
+    createdAt: serverTimestamp(),
+    date: serverTimestamp(), // Adding for backwards compatibility
+    status: 'pending'
+  };
 
-export const deleteLaundryItem = async (id: string): Promise<void> => {
-  try {
-    await deleteDoc(doc(db, 'laundryItems', id));
-  } catch (error) {
-    console.error('Error deleting laundry item:', error);
-    throw error;
-  }
-};
-
-export const createBill = async (billData: Omit<Bill, 'id'>): Promise<string> => {
-  try {
-    const docRef = await addDoc(collection(db, 'bills'), {
-      ...billData,
-      createdAt: new Date(),
-      status: 'pending'
-    });
-    return docRef.id;
-  } catch (error) {
-    console.error('Error creating bill:', error);
-    throw error;
-  }
+  const docRef = await addDoc(collection(db, 'bills'), billWithDetails);
+  return docRef.id;
 };
 
 export const getBillsByCustomerId = async (customerId: string): Promise<Bill[]> => {
-  try {
-    const q = query(
-      collection(db, 'bills'), 
-      where('customerId', '==', customerId),
-      orderBy('createdAt', 'desc')
-    );
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
+  const q = query(collection(db, 'bills'), where('customerId', '==', customerId));
+  const querySnapshot = await getDocs(q);
+  
+  const bills: Bill[] = [];
+  querySnapshot.forEach((doc) => {
+    const data = doc.data();
+    bills.push({
       id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate() || new Date()
-    } as Bill));
-  } catch (error) {
-    console.error('Error getting bills by customer ID:', error);
-    throw error;
-  }
+      customerId: data.customerId,
+      customerName: data.customerName,
+      customerPhone: data.customerPhone,
+      date: data.date?.toDate(),
+      createdAt: data.createdAt?.toDate() || data.date?.toDate() || new Date(),
+      items: data.items,
+      subtotal: data.subtotal,
+      total: data.total,
+      status: data.status,
+      paymentMethod: data.paymentMethod,
+      paymentDate: data.paymentDate ? data.paymentDate.toDate() : undefined,
+      orderId: data.orderId
+    } as Bill);
+  });
+  
+  return bills;
 };
 
-export const getBillsByStatus = async (status: string): Promise<Bill[]> => {
-  try {
-    const q = query(collection(db, 'bills'), where('status', '==', status), orderBy('createdAt', 'desc'));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
+export const getBillById = async (billId: string): Promise<Bill | null> => {
+  const docRef = doc(db, 'bills', billId);
+  const docSnap = await getDoc(docRef);
+  
+  if (docSnap.exists()) {
+    const data = docSnap.data();
+    return {
+      id: docSnap.id,
+      customerId: data.customerId,
+      customerName: data.customerName,
+      customerPhone: data.customerPhone,
+      date: data.date?.toDate(),
+      createdAt: data.createdAt?.toDate() || data.date?.toDate() || new Date(),
+      items: data.items,
+      subtotal: data.subtotal,
+      total: data.total,
+      status: data.status,
+      paymentMethod: data.paymentMethod,
+      paymentDate: data.paymentDate ? data.paymentDate.toDate() : undefined,
+      orderId: data.orderId
+    } as Bill;
+  }
+  
+  return null;
+};
+
+export const getBillsByStatus = async (status: 'pending' | 'paid' | 'cancelled'): Promise<Bill[]> => {
+  const q = query(
+    collection(db, 'bills'), 
+    where('status', '==', status),
+    orderBy('createdAt', 'desc')
+  );
+  
+  const querySnapshot = await getDocs(q);
+  
+  const bills: Bill[] = [];
+  querySnapshot.forEach((doc) => {
+    const data = doc.data();
+    bills.push({
       id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate() || new Date()
-    } as Bill));
-  } catch (error) {
-    console.error('Error getting bills by status:', error);
-    throw error;
+      customerId: data.customerId,
+      customerName: data.customerName,
+      customerPhone: data.customerPhone,
+      date: data.date?.toDate(),
+      createdAt: data.createdAt?.toDate() || data.date?.toDate() || new Date(),
+      items: data.items,
+      subtotal: data.subtotal,
+      total: data.total,
+      status: data.status,
+      paymentMethod: data.paymentMethod,
+      paymentDate: data.paymentDate ? data.paymentDate.toDate() : undefined,
+      orderId: data.orderId
+    } as Bill);
+  });
+  
+  return bills;
+};
+
+export const updateBillPayment = async (
+  billId: string,
+  paymentMethod: Bill['paymentMethod'],
+  paidAmount?: number,
+  pendingAmount?: number
+): Promise<void> => {
+  const docRef = doc(db, 'bills', billId);
+
+  if (typeof paidAmount === 'number' && typeof pendingAmount === 'number') {
+    // Partial payment: update total to pending amount and keep status as pending
+    await updateDoc(docRef, {
+      total: pendingAmount,
+      status: 'pending',
+      paymentMethod,
+      paymentDate: serverTimestamp(),
+    });
+  } else {
+    // Full payment: mark as paid
+    await updateDoc(docRef, {
+      status: 'paid',
+      paymentMethod,
+      paymentDate: serverTimestamp(),
+    });
   }
 };
 
 export const getBillsByOrderId = async (orderId: string): Promise<Bill | null> => {
-  try {
-    const q = query(collection(db, 'bills'), where('orderId', '==', orderId));
-    const querySnapshot = await getDocs(q);
-    
-    if (querySnapshot.empty) {
-      return null;
-    }
-    
-    const doc = querySnapshot.docs[0];
-    return {
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate() || new Date()
-    } as Bill;
-  } catch (error) {
-    console.error('Error getting bill by order ID:', error);
-    throw error;
+  const q = query(collection(db, 'bills'), where('orderId', '==', orderId));
+  const querySnapshot = await getDocs(q);
+  
+  if (querySnapshot.empty) {
+    return null;
   }
+  
+  const doc = querySnapshot.docs[0];
+  const data = doc.data();
+  
+  return {
+    id: doc.id,
+    customerId: data.customerId,
+    customerName: data.customerName,
+    customerPhone: data.customerPhone,
+    date: data.date?.toDate(),
+    createdAt: data.createdAt?.toDate() || data.date?.toDate() || new Date(),
+    items: data.items,
+    subtotal: data.subtotal,
+    total: data.total,
+    status: data.status,
+    paymentMethod: data.paymentMethod,
+    paymentDate: data.paymentDate ? data.paymentDate.toDate() : undefined,
+    orderId: data.orderId
+  } as Bill;
 };
 
-export const updateBillPayment = async (
-  billId: string, 
-  paymentMethod: 'cash' | 'upi' | 'card' | 'phonepe',
-  amountPaid?: number,
-  remainingAmount?: number
-): Promise<void> => {
+export const updateBillPartialPayment = async (billId: string, amount: number) => {
   try {
     const billRef = doc(db, 'bills', billId);
     
-    if (amountPaid && remainingAmount !== undefined) {
-      // Partial payment
-      await updateDoc(billRef, {
-        status: remainingAmount <= 0.01 ? 'paid' : 'partial',
-        paymentMethod,
-        paidAt: new Date(),
-        paidAmount: amountPaid,
-        total: remainingAmount <= 0.01 ? amountPaid : remainingAmount
-      });
-    } else {
-      // Full payment
-      await updateDoc(billRef, {
-        status: 'paid',
-        paymentMethod,
-        paidAt: new Date()
-      });
-    }
-  } catch (error) {
-    console.error('Error updating bill payment:', error);
-    throw error;
-  }
-};
-
-export const updateBillPartialPayment = async (
-  billId: string,
-  amountPaid: number,
-  paymentMethod: 'cash' | 'upi' | 'card' | 'phonepe'
-): Promise<void> => {
-  try {
-    const billRef = doc(db, 'bills', billId);
+    // First get the current bill data
     const billDoc = await getDoc(billRef);
-    
     if (!billDoc.exists()) {
       throw new Error('Bill not found');
     }
     
-    const billData = billDoc.data() as Bill;
-    const newPaidAmount = (billData.paidAmount || 0) + amountPaid;
-    const isFullyPaid = newPaidAmount >= billData.total;
+    const billData = billDoc.data();
+    const currentAmountPaid = billData.amountPaid || 0;
+    const newAmountPaid = currentAmountPaid + amount;
     
+    // Calculate remaining balance
+    const totalAmount = billData.totalAmount || 0;
+    const remainingBalance = totalAmount - newAmountPaid;
+    
+    // Update payment status if fully paid
+    const paymentStatus = newAmountPaid >= totalAmount ? 'Paid' : 'Partially Paid';
+    
+    // Update the bill document
     await updateDoc(billRef, {
-      paidAmount: newPaidAmount,
-      status: isFullyPaid ? 'paid' : 'partial',
-      paymentMethod,
-      paidAt: new Date()
+      amountPaid: newAmountPaid,
+      remainingBalance: remainingBalance,
+      paymentStatus: paymentStatus,
+      lastUpdated: new Date().toISOString()
     });
+    
+    return {
+      success: true,
+      message: `Payment of ${amount} recorded successfully.`,
+      paymentStatus
+    };
   } catch (error) {
     console.error('Error updating bill partial payment:', error);
-    throw error;
+    return {
+      success: false,
+      message: `Error updating payment: ${error.message}`
+    };
   }
-};
-
-export const getAllBills = async (): Promise<Bill[]> => {
-  try {
-    const q = query(collection(db, 'bills'), orderBy('createdAt', 'desc'));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate() || new Date()
-    } as Bill));
-  } catch (error) {
-    console.error('Error getting all bills:', error);
-    throw error;
-  }
-};
-
-export const updateBillItems = async (billId: string, items: OrderItem[]): Promise<void> => {
-  try {
-    const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const tax = subtotal * 0.18; // 18% GST
-    const total = subtotal + tax;
-
-    const billRef = doc(db, 'bills', billId);
-    await updateDoc(billRef, {
-      items,
-      subtotal,
-      tax,
-      total
-    });
-  } catch (error) {
-    console.error('Error updating bill items:', error);
-    throw error;
-  }
-};
+}
