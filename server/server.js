@@ -17,7 +17,12 @@ dotenv.config();
 
 const app = express();
 app.use(cors({
-  origin: 'http://localhost:8080'
+  origin: [
+    'https://vkwash.in',
+    'http://localhost:8080'
+  ],
+  methods: ['GET', 'POST'],
+  credentials: true
 }));
 app.use(express.json());
 
