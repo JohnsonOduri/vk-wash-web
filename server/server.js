@@ -27,7 +27,7 @@ const CLIENT_KEY = process.env.CLIENT_KEY;
 const CLIENT_INDEX = process.env.CLIENT_INDEX;
 const BASE_URL =
   process.env.PHONEPE_BASE_URL ||
-  'https://api.phonepe.com/apis/hermes/pg/v1';
+  'https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1';
 const APP_BE_URL = process.env.APP_BE_URL || 'https://vk-wash-web.onrender.com';
 
 // Validate required env variables at startup
@@ -247,7 +247,7 @@ app.post('/sdk-order', async (req, res) => {
         const clientId = process.env.CLIENT_ID;
         const clientSecret = process.env.CLIENT_KEY;
         const clientVersion = Number(process.env.CLIENT_INDEX) || 1;
-        const env = Env.SANDBOX; // Use Env.PRODUCTION for production
+        const env = Env.SANDBOX; // Always use sandbox for testing
 
         const client = StandardCheckoutClient.getInstance(clientId, clientSecret, clientVersion, env);
 
@@ -275,7 +275,7 @@ app.get('/sdk-order-status/:merchantOrderId', async (req, res) => {
         const clientId = process.env.CLIENT_ID;
         const clientSecret = process.env.CLIENT_KEY;
         const clientVersion = Number(process.env.CLIENT_INDEX) || 1;
-        const env = Env.SANDBOX; // Use Env.PRODUCTION for production
+        const env = Env.SANDBOX; // Always use sandbox for testing
 
         const client = StandardCheckoutClient.getInstance(clientId, clientSecret, clientVersion, env);
 
@@ -294,7 +294,7 @@ app.post('/sdk-validate-callback', async (req, res) => {
         const clientId = process.env.CLIENT_ID;
         const clientSecret = process.env.CLIENT_KEY;
         const clientVersion = Number(process.env.CLIENT_INDEX) || 1;
-        const env = Env.SANDBOX; // Use Env.PRODUCTION for production
+        const env = Env.SANDBOX; // Always use sandbox for testing
 
         const client = StandardCheckoutClient.getInstance(clientId, clientSecret, clientVersion, env);
 

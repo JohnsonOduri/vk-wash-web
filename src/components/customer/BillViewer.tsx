@@ -166,7 +166,7 @@ const BillViewer = ({ customerId }) => {
   const initiatePhonePePayment = async (bill: Bill) => {
     try {
       console.log('Initiating PhonePe payment for bill:', bill);
-      const response = await fetch("https://vkwash.in/payment", {
+      const response = await fetch("https://vk-wash-web.onrender.com/payment", {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
