@@ -51,19 +51,25 @@ function generateXVerify(payload) {
 // Initiate payment route
 app.post('/payment', async (req, res) => {
   try {
-    const { merchantTransactionId, amount } = req.body;
-    if (!merchantTransactionId || !amount) {
-      console.warn("Missing fields in /payment body:", req.body);
-      return res.status(400).json({ error: "Missing merchantTransactionId or amount" });
+    let { merchantTransactionId, amount } = req.body;
+
+    // Validate amount: must be a number, in paise, and > 0
+    amount = Number(amount);
+    if (!merchantTransactionId || !amount || isNaN(amount) || amount <= 0) {
+      console.warn("Missing or invalid merchantTransactionId or amount in /payment body:", req.body);
+      return res.status(400).json({ error: "Missing or invalid merchantTransactionId or amount (must be in paise)" });
     }
-    // Remove the duplicate destructuring here
-    // const { merchantTransactionId, amount } = req.body; // <-- DELETE THIS LINE
+
+    // Ensure merchantTransactionId is a string
+    merchantTransactionId = String(merchantTransactionId);
+
+    // All URLs must be HTTPS for production/sandbox
     const payUrl = '/pg/v1/pay';
     const reqBody = {
       merchantId: CLIENT_ID,
       merchantTransactionId,
       merchantUserId: 'MUID' + Date.now(),
-      amount: amount,
+      amount: amount, // Already in paise
       redirectUrl: `${APP_BE_URL}/payment-success?merchantTransactionId=${merchantTransactionId}`,
       redirectMode: 'POST',
       callbackUrl: `${APP_BE_URL}/payment-status`,
@@ -72,9 +78,20 @@ app.post('/payment', async (req, res) => {
         type: 'PAY_PAGE'
       }
     };
+
+    // Log all required fields for debugging
+    console.log("Request body to PhonePe:", JSON.stringify(reqBody, null, 2));
+    console.log("merchantId:", CLIENT_ID, "merchantTransactionId:", merchantTransactionId, "amount:", amount);
+    console.log("redirectUrl:", reqBody.redirectUrl, "callbackUrl:", reqBody.callbackUrl);
+
     const base64Body = Buffer.from(JSON.stringify(reqBody)).toString('base64');
     const stringToHash = base64Body + payUrl + CLIENT_KEY;
     const checksum = crypto.createHash('sha256').update(stringToHash).digest('hex') + "###" + CLIENT_INDEX;
+
+    console.log("Encoded base64Body:", base64Body);
+    console.log("POSTing to:", BASE_URL + payUrl);
+    console.log("X-VERIFY header:", checksum);
+
     const response = await axios.post(
       BASE_URL + payUrl,
       { request: base64Body },
