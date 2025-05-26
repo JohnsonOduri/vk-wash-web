@@ -129,30 +129,17 @@ app.post('/payment', async (req, res) => {
                 { request: base64Payload },
                 { headers }
             );
+            res.status(200).json({ status: 200, payload: response.data });
         } catch (err) {
-            if (err.response) {
-                // Enhanced error logging
-                console.error('PhonePe API error:', {
-                    status: err.response.status,
-                    data: err.response.data,
-                    url: `${BASE_URL}/pay`,
-                    payload: { request: base64Payload },
-                    headers
-                });
-                // Return all error details for debugging
-                return res.status(502).json({ 
-                    error: 'PhonePe API error', 
-                    details: err.response.data,
-                    status: err.response.status,
-                    url: `${BASE_URL}/pay`,
-                    payload: payload, // include the payload for debugging
-                    headers: headers // include headers for debugging
-                });
-            }
-            console.error('Unknown error during PhonePe API call:', err);
-            throw err;
+            console.error("PhonePe API Error:", err?.response?.data || err.message);
+            res.status(502).json({
+                error: 'PhonePe API error',
+                details: err?.response?.data || err.message,
+                status: err?.response?.status || 500
+            });
+            return;
         }
-        res.json(response.data);
+        // Remove the old res.json(response.data);
     } catch (error) {
         // Log all env variables for debugging KEY_NOT_CONFIGURED
         console.log('PhonePe ENV:', {
