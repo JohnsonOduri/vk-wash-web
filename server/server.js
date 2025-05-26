@@ -30,9 +30,7 @@ app.use(express.json());
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_KEY = process.env.CLIENT_KEY;
 const CLIENT_INDEX = process.env.CLIENT_INDEX;
-const BASE_URL =
-  process.env.PHONEPE_BASE_URL ||
-  'https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1';
+const BASE_URL = 'https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1';
 const APP_BE_URL = process.env.APP_BE_URL || 'https://vk-wash-web.onrender.com';
 
 // Validate required env variables at startup
@@ -72,7 +70,7 @@ app.post('/payment', async (req, res) => {
     const stringToHash = base64Body + payUrl + CLIENT_KEY;
     const checksum = crypto.createHash('sha256').update(stringToHash).digest('hex') + "###" + CLIENT_INDEX;
     const response = await axios.post(
-      PHONEPE_BASE_URL + payUrl,
+      BASE_URL + payUrl,
       { request: base64Body },
       {
         headers: {
@@ -85,7 +83,7 @@ app.post('/payment', async (req, res) => {
     res.status(200).json({
       status: 200,
       payload: response.data,
-      url: PHONEPE_BASE_URL + payUrl,
+      url: BASE_URL + payUrl,
       requestSent: reqBody
     });
   } catch (err) {
