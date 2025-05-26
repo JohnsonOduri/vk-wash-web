@@ -52,105 +52,50 @@ function generateXVerify(payload) {
 
 // Initiate payment route
 app.post('/payment', async (req, res) => {
-    try {
-        // Accept both merchantTransactionId and billId for compatibility
-        let { amount, merchantTransactionId, billId, redirectUrl, callbackUrl } = req.body;
-
-        // Use billId as merchantTransactionId if merchantTransactionId is not provided
-        if (!merchantTransactionId && billId) {
-            merchantTransactionId = billId;
+  try {
+    const { merchantTransactionId, amount } = req.body;
+    const payUrl = '/pg/v1/pay';
+    const reqBody = {
+      merchantId: CLIENT_ID,
+      merchantTransactionId,
+      merchantUserId: 'MUID' + Date.now(),
+      amount: amount,
+      redirectUrl: `${APP_BE_URL}/payment-success?merchantTransactionId=${merchantTransactionId}`,
+      redirectMode: 'POST',
+      callbackUrl: `${APP_BE_URL}/payment-status`,
+      mobileNumber: '9999999999',
+      paymentInstrument: {
+        type: 'PAY_PAGE'
+      }
+    };
+    const base64Body = Buffer.from(JSON.stringify(reqBody)).toString('base64');
+    const stringToHash = base64Body + payUrl + CLIENT_KEY;
+    const checksum = crypto.createHash('sha256').update(stringToHash).digest('hex') + "###" + CLIENT_INDEX;
+    const response = await axios.post(
+      PHONEPE_BASE_URL + payUrl,
+      { request: base64Body },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-VERIFY': checksum,
+          'X-MERCHANT-ID': CLIENT_ID
         }
-
-        // Log incoming request for debugging
-        console.log('--- /payment called ---');
-        console.log('Request body:', req.body);
-        console.log('amount:', amount, 'merchantTransactionId:', merchantTransactionId, 'billId:', billId);
-
-        // Ensure amount is a number
-        amount = Number(amount);
-        console.log('Parsed amount:', amount);
-
-        if (!amount || amount <= 0) {
-            console.log('Invalid amount:', amount);
-            return res.status(400).json({ error: "Invalid amount" });
-        }
-        if (!merchantTransactionId) {
-            console.log('Missing merchantTransactionId or billId');
-            return res.status(400).json({ error: "Missing merchantTransactionId or billId" });
-        }
-
-        // Use provided or default URLs
-        const finalRedirectUrl = redirectUrl || 'https://vkwash.in/payment-success?merchantTransactionId=' + merchantTransactionId;
-        const finalCallbackUrl = callbackUrl || `${APP_BE_URL}/payment-status`;
-
-        console.log('finalRedirectUrl:', finalRedirectUrl);
-        console.log('finalCallbackUrl:', finalCallbackUrl);
-
-        const payload = {
-            merchantId: CLIENT_ID,
-            merchantTransactionId,
-            amount: Math.round(amount * 100), // in paise
-            redirectUrl: finalRedirectUrl,
-            callbackUrl: finalCallbackUrl,
-            paymentInstrument: {
-                type: 'PAY_PAGE'
-            }
-        };
-
-        const base64Payload = Buffer.from(JSON.stringify(payload)).toString('base64');
-        const xVerify = generateXVerify(payload);
-
-        // Log for debugging
-        console.log('PhonePe PAY payload:', payload);
-        console.log('base64Payload:', base64Payload);
-        console.log('X-VERIFY:', xVerify);
-        console.log('X-MERCHANT-ID:', CLIENT_ID);
-
-        // Log all env variables and headers for debugging
-        console.log('ENV:', {
-            CLIENT_ID,
-            CLIENT_KEY,
-            CLIENT_INDEX,
-            BASE_URL
-        });
-
-        // Log headers before making the request
-        const headers = {
-            'Content-Type': 'application/json',
-            'X-VERIFY': xVerify,
-            'X-MERCHANT-ID': CLIENT_ID
-        };
-        console.log('Request headers:', headers);
-
-        let response;
-        try {
-            response = await axios.post(
-                `${BASE_URL}/pay`,
-                { request: base64Payload },
-                { headers }
-            );
-            res.status(200).json({ status: 200, payload: response.data });
-        } catch (err) {
-            console.error("PhonePe API Error:", err?.response?.data || err.message);
-            res.status(502).json({
-                error: 'PhonePe API error',
-                details: err?.response?.data || err.message,
-                status: err?.response?.status || 500
-            });
-            return;
-        }
-        // Remove the old res.json(response.data);
-    } catch (error) {
-        // Log all env variables for debugging KEY_NOT_CONFIGURED
-        console.log('PhonePe ENV:', {
-            CLIENT_ID,
-            CLIENT_KEY,
-            CLIENT_INDEX,
-            BASE_URL
-        });
-        console.error('Payment initiation error:', error);
-        res.status(500).json({ error: error.message, stack: error.stack });
-    }
+      }
+    );
+    res.status(200).json({
+      status: 200,
+      payload: response.data,
+      url: PHONEPE_BASE_URL + payUrl,
+      requestSent: reqBody
+    });
+  } catch (err) {
+    console.error("PhonePe payment error:", err.response?.data || err.message);
+    res.status(502).json({
+      error: "PhonePe API error",
+      details: err.response?.data || err.message,
+      status: err.response?.status || 500
+    });
+  }
 });
 
 // Payment status GET route
