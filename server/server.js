@@ -30,7 +30,7 @@ app.use(express.json());
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_KEY = process.env.CLIENT_KEY;
 const CLIENT_INDEX = process.env.CLIENT_INDEX;
-const BASE_URL = 'https://api-preprod.phonepe.com/apis/pg-sandbox';
+const BASE_URL = 'https://api.phonepe.com/apis/hermes';
 const APP_BE_URL = process.env.APP_BE_URL || 'https://vk-wash-web.onrender.com';
 
 // Validate required env variables at startup
@@ -50,6 +50,10 @@ function generateXVerify(payload) {
 
 // Initiate payment route
 app.post('/payment', async (req, res) => {
+  const { merchantTransactionId, amount } = req.body;
+  if (!merchantTransactionId || !amount) {
+    return res.status(400).json({ error: "Missing merchantTransactionId or amount" });
+  }
   try {
     const { merchantTransactionId, amount } = req.body;
     const payUrl = '/pg/v1/pay';
