@@ -50,12 +50,14 @@ function generateXVerify(payload) {
 
 // Initiate payment route
 app.post('/payment', async (req, res) => {
-  const { merchantTransactionId, amount } = req.body;
-  if (!merchantTransactionId || !amount) {
-    return res.status(400).json({ error: "Missing merchantTransactionId or amount" });
-  }
   try {
     const { merchantTransactionId, amount } = req.body;
+    if (!merchantTransactionId || !amount) {
+      console.warn("Missing fields in /payment body:", req.body);
+      return res.status(400).json({ error: "Missing merchantTransactionId or amount" });
+    }
+    // Remove the duplicate destructuring here
+    // const { merchantTransactionId, amount } = req.body; // <-- DELETE THIS LINE
     const payUrl = '/pg/v1/pay';
     const reqBody = {
       merchantId: CLIENT_ID,

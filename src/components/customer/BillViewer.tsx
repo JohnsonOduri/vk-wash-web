@@ -166,14 +166,15 @@ const BillViewer = ({ customerId }) => {
   const initiatePhonePePayment = async (bill: Bill) => {
     try {
       console.log('Initiating PhonePe payment for bill:', bill);
-      const response = await fetch("https://vk-wash-web.onrender.com/payment", {
+      const response = await fetch('https://vk-wash-web.onrender.com/payment', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
-          billId: bill.id,
-          amount: bill.total,
-          customerId,
-        }),
+          merchantTransactionId: bill.id, // Unique ID per transaction
+          amount: bill.total * 100        // Convert rupees to paise
+        })
       });
       console.log('Raw response from /payment:', response);
       const data = await response.json();
