@@ -776,6 +776,9 @@ async function uploadInvoiceImageAndShareWhatsApp(
   billId: string,
   amount?: number
 ) {
+  // Open a blank tab immediately to avoid popup blockers
+  const whatsappTab = window.open("about:blank", "_blank");
+
   const cloudName = "djxvembm4";
   const unsignedUploadPreset = "vkwash_invoice";
   const fileName = `${customerName.replace(/\s+/g, "_")}-${billId}`;
@@ -804,6 +807,7 @@ async function uploadInvoiceImageAndShareWhatsApp(
       description: "Could not upload invoice image to Cloudinary.",
       variant: "destructive",
     });
+    if (whatsappTab) whatsappTab.close();
     return;
   }
 
@@ -815,5 +819,12 @@ async function uploadInvoiceImageAndShareWhatsApp(
   const phone = customerPhoneNumber.replace(/[^0-9]/g, "");
   const message = `Hello ${customerName},%0AHere is your VK Wash invoice image:%0A${imageUrl}%0A%0APayment link:%0A${upiLink}`;
   const whatsappUrl = `https://wa.me/91${phone}?text=${message}`;
-  window.open(whatsappUrl, "_blank");
+  console.log("Opening WhatsApp with URL:", whatsappUrl);
+
+  if (whatsappTab) {
+    whatsappTab.location.href = whatsappUrl;
+    whatsappTab.focus();
+  } else {
+    window.open(whatsappUrl, "_blank");
+  }
 }

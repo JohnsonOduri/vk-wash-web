@@ -7,16 +7,22 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Firebase and environment secrets
+.env
+.env.*
+/server/.env
+firebase-debug.log
+
+# Build and IDE files
 node_modules
 dist
 dist-ssr
 *.local
-
-# Editor directories and files
 .vscode/*
-!.vscode/extensions.json
 .idea
 .DS_Store
+
+# Editor directories and files
 *.suo
 *.ntvs*
 *.njsproj
