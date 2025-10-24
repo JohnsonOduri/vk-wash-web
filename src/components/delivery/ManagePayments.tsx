@@ -556,7 +556,8 @@ const ManagePayments = () => {
 
                     // Draw logo before VK Wash Invoice
                     const logo = new window.Image();
-                    logo.src = "/src/components/pictures/VK logo.png";
+                    // Use absolute public path for images placed in the public folder
+                    logo.src = "/pictures/VK logo.png";
                     logo.onload = async () => {
                       // Set logo size to match font height (28px)
                       const logoSize = 28;

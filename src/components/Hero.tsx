@@ -36,7 +36,7 @@ const Hero = () => {
             <div className="relative w-64 h-64 md:w-80 md:h-80 lg:w-96 lg:h-96">
               <div className="absolute inset-0 bg-blue rounded-full opacity-10 animate-pulse"></div>
               <div className="absolute inset-0 flex items-center justify-center">
-                <img alt="VK Wash Logo" src="/lovable-uploads/75ef8297-15b5-46ca-ab68-b833491cb6d2.png" className="w-3/4 h-3/4 object-cover" />
+                <img alt="VK Wash Logo" src="/lovable-uploads/logo.png" className="w-3/4 h-3/4 object-cover" />
               </div>
             </div>
           </div>

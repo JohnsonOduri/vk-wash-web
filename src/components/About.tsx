@@ -1,4 +1,5 @@
-import vkLogo from './pictures/VK logo.png';
+// Image moved to public/pictures — reference by absolute public path
+const vkLogo = '/pictures/VK logo.png';
 
 const About = () => {
   return (

@@ -4,9 +4,10 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import basicWashImg from './pictures/basic-wash.png';
-import premiumWashImg from './pictures/premium-wash.png';
-import expressServicesImg from './pictures/express-services.png';
+// Images moved to public/pictures — reference them via absolute public paths
+const basicWashImg = '/pictures/basic-wash.png';
+const premiumWashImg = '/pictures/premium-wash.png';
+const expressServicesImg = '/pictures/express-services.png';
 
 const pricingData = [
 	{
