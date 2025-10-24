@@ -17,18 +17,25 @@ import RejectOrderDialog from './RejectOrderDialog';
 
 interface DeliveryOrdersProps {
   onCreateBill?: (order: Order) => void;
+  // initial inner tab for DeliveryOrders: 'pending' | 'assigned'
+  initialTab?: 'pending' | 'assigned';
 }
 
-const DeliveryOrders = ({ onCreateBill }: DeliveryOrdersProps) => {
+const DeliveryOrders = ({ onCreateBill, initialTab }: DeliveryOrdersProps) => {
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [assignedOrders, setAssignedOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
-  const [activeTab, setActiveTab] = useState('pending');
+  const [activeTab, setActiveTab] = useState<string>('pending');
   const { user } = useFirebaseAuth();
   const navigate = useNavigate();
+
+  // If a parent passes an initialTab, respect it on mount and when it changes
+  useEffect(() => {
+    if (initialTab) setActiveTab(initialTab);
+  }, [initialTab]);
 
   useEffect(() => {
     fetchActiveOrders();
@@ -195,23 +202,25 @@ const DeliveryOrders = ({ onCreateBill }: DeliveryOrdersProps) => {
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-4">
-          <TabsTrigger value="pending">Pending Orders</TabsTrigger>
+          
           <TabsTrigger value="assigned">My Assigned Orders</TabsTrigger>
+          <TabsTrigger value="pending">Pending Orders</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="pending">
-          <PendingOrdersTab 
-            orders={activeOrders} 
-            onAcceptOrder={handleAcceptOrder}
-            onRejectOrder={openRejectDialog}
-          />
-        </TabsContent>
+        
         
         <TabsContent value="assigned">
           <AssignedOrdersTab 
             orders={assignedOrders} 
             onUpdateStatus={handleUpdateStatus}
             onCreateBill={handleCreateBill}
+          />
+        </TabsContent>
+        <TabsContent value="pending">
+          <PendingOrdersTab 
+            orders={activeOrders} 
+            onAcceptOrder={handleAcceptOrder}
+            onRejectOrder={openRejectDialog}
           />
         </TabsContent>
       </Tabs>

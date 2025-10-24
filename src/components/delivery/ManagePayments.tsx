@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,6 +51,8 @@ const ManagePayments = () => {
   const [showAllBills, setShowAllBills] = useState(false);
   const [allBillsLoading, setAllBillsLoading] = useState(false);
   const [allBillsError, setAllBillsError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { user } = useFirebaseAuth();
 
   useEffect(() => {
     loadPendingBills();
@@ -59,7 +63,15 @@ const ManagePayments = () => {
   const loadPendingBills = async () => {
     setIsLoading(true);
     try {
-      const pendingBills = await getBillsByStatus('pending');
+      let pendingBills = await getBillsByStatus('pending');
+
+      // If delivery user, show only bills for their branch (assumption: user.branch exists)
+      if (user && user.role === 'delivery') {
+        const userBranch = (user as any).branch;
+        if (userBranch) {
+          pendingBills = pendingBills.filter((b: any) => b.branch === userBranch);
+        }
+      }
       
       // Sort by date (oldest first)
       pendingBills.sort((a, b) => {
@@ -295,33 +307,20 @@ const ManagePayments = () => {
       {/* Pending Payments Card should be on top */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 flex items-center justify-between">
             <CardTitle className="text-lg">Pending Payments</CardTitle>
+            
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-amber-600">₹{pendingAmount.toFixed(2)}</p>
-            <p className="text-sm text-gray-500 mt-1">{bills.length} bills pending</p>
-            {/* Show pending amount for each bill */}
-            {bills.length > 0 && (
-              <div className="mt-3">
-                <ul className="space-y-1">
-                  {bills.map(bill => (
-                    <li key={bill.id} className="flex justify-between text-sm">
-                      <span>
-                        {bill.customerName} ({bill.customerPhone})
-                      </span>
-                      <span>
-                        Pending: ₹
-                        {typeof bill.total === 'number'
-                          ? bill.total.toFixed(2)
-                          : "0.00"
-                        }
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate('/delivery-dashboard', { state: { activeTab: 'activeOrders', deliveryInnerTab: 'assigned' } })}
+            >
+              <p className="text-sm text-gray-500 mt-1">{bills.length} bills pending</p>
+                          </Button>
           </CardContent>
         </Card>
         <Card>

@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { 
   Card, 
@@ -17,12 +17,14 @@ import DeliveryOrders from '@/components/delivery/DeliveryOrders';
 import ManageItems from '@/components/delivery/ManageItems';
 import CreateBill from '@/components/delivery/CreateBill';
 import ManagePayments from '@/components/delivery/ManagePayments';
+import CustomersTab from '@/components/delivery/CustomersTab';
 
 const DeliveryDashboard = () => {
   const { user, logout } = useFirebaseAuth();
   const navigate = useNavigate();
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [activeTab, setActiveTab] = useState('activeOrders');
+  const location = useLocation();
   
   useEffect(() => {
     // Redirect to login if not authenticated or not a delivery person
@@ -30,6 +32,18 @@ const DeliveryDashboard = () => {
       navigate('/login');
     }
   }, [user, navigate]);
+
+  // Check location state for initial active tab (e.g., coming from ManagePayments or other pages)
+  useEffect(() => {
+    try {
+      const state = (location && (location as any).state) || {};
+      if (state && state.activeTab) {
+        setActiveTab(state.activeTab);
+      }
+    } catch (err) {
+      // ignore
+    }
+  }, [location]);
   
   const handleLogout = () => {
     logout();
@@ -80,10 +94,11 @@ const DeliveryDashboard = () => {
             <TabsTrigger value="items">Manage Items</TabsTrigger>
             <TabsTrigger value="bill">Create Bill</TabsTrigger>
             <TabsTrigger value="payments">Manage Payments</TabsTrigger>
+            <TabsTrigger value="customers">Customers</TabsTrigger>
           </TabsList>
           
           <TabsContent value="activeOrders">
-            <DeliveryOrders onCreateBill={handleCreateBill} />
+            <DeliveryOrders onCreateBill={handleCreateBill} initialTab={(location as any)?.state?.deliveryInnerTab} />
           </TabsContent>
           
           <TabsContent value="items">
@@ -103,6 +118,9 @@ const DeliveryDashboard = () => {
 
           <TabsContent value="payments">
             <ManagePayments />
+          </TabsContent>
+          <TabsContent value="customers">
+            <CustomersTab />
           </TabsContent>
         </Tabs>
       </main>

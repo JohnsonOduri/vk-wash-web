@@ -13,7 +13,9 @@ import { getAllLaundryItems, createBill } from '@/services/laundryItemService';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getOrderById, updateOrderStatus } from '@/services/orderService';
+import { assignDeliveryPerson, updateOrderBillId } from '@/services/orderService';
 import { createCustomer, checkCustomerExists } from '@/services/customerService';
+import { getAllCustomers } from '@/services/customerService';
 
 const CreateBill = ({ orderId, customerInfo }) => {
   const navigate = useNavigate();
@@ -30,6 +32,8 @@ const CreateBill = ({ orderId, customerInfo }) => {
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [customerId, setCustomerId] = useState(customerInfo?.customerId || '');
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [newCustomerDialogOpen, setNewCustomerDialogOpen] = useState(false);
   const [customerExistsError, setCustomerExistsError] = useState(false);
   const [itemCategory, setItemCategory] = useState('regular');
@@ -40,6 +44,7 @@ const CreateBill = ({ orderId, customerInfo }) => {
 
   useEffect(() => {
     loadLaundryItems();
+    loadCustomers();
     
     // If we have an order ID but no customer info, fetch the order details
     if (currentOrderId && !customerInfo) {
@@ -68,6 +73,15 @@ const CreateBill = ({ orderId, customerInfo }) => {
       });
     } finally {
       setLoadingOrder(false);
+    }
+  };
+
+  const loadCustomers = async () => {
+    try {
+      const all = await getAllCustomers();
+      setCustomers(all || []);
+    } catch (err) {
+      console.error('Failed to load customers for search', err);
     }
   };
 
@@ -239,23 +253,39 @@ const CreateBill = ({ orderId, customerInfo }) => {
       const subtotal = calculateSubtotal();
       // Only include orderId if it is defined and not empty
       const billData: any = {
-        customerId: customerPhone, // Always use phone number as customerId
+        customerId: customerId || customerPhone, // prefer selected customer id
         customerName,
         customerPhone,
         items: selectedItems,
         subtotal: subtotal,
         tax: 0,
         total: subtotal,
+        // mark who created this bill and branch if available
+        createdBy: user?.id,
+        deliveryPersonId: user?.id,
+        deliveryPersonName: user?.name,
+        deliveryPersonPhone: (user as any)?.phone,
+        branch: (user as any)?.branch
       };
       if (currentOrderId) {
         billData.orderId = currentOrderId;
       }
 
-      await createBill(billData);
+      const billId = await createBill(billData);
 
-      // If we have an order ID, update its status to 'processing'
+      // If we have an order ID, update its status to 'processing' and associate bill and assign delivery person
       if (currentOrderId) {
         await updateOrderStatus(currentOrderId, 'processing');
+        try {
+          // assign this delivery person to the order
+          if (user) {
+            await assignDeliveryPerson(currentOrderId, user.id, user.name || 'Delivery', (user as any).phone || '');
+          }
+          // Save bill id on order
+          await updateOrderBillId(currentOrderId, billId);
+        } catch (innerErr) {
+          console.error('Error assigning delivery or updating order with bill id:', innerErr);
+        }
       }
 
       toast({
@@ -319,6 +349,52 @@ const CreateBill = ({ orderId, customerInfo }) => {
               )}
             </CardHeader>
             <CardContent className="space-y-4">
+              {!customerInfo && (
+                <div>
+                  <Label className="text-sm">Select Customer</Label>
+                  <Input
+                    placeholder="Search customers by name or phone..."
+                    value={customerSearchQuery}
+                    onChange={(e) => setCustomerSearchQuery(e.target.value)}
+                    className="mb-2"
+                  />
+                  {customerSearchQuery && (
+                    <div className="max-h-40 overflow-y-auto border rounded">
+                      {(customers || [])
+                        .filter(c => {
+                          const q = customerSearchQuery.toLowerCase();
+                          return (c.name || '').toLowerCase().includes(q) || (c.phone || '').includes(q);
+                        })
+                        .slice(0, 10)
+                        .map(c => (
+                          <div
+                            key={c.id}
+                            className="p-2 hover:bg-gray-50 cursor-pointer"
+                            onClick={() => {
+                              setCustomerId(c.id);
+                              setCustomerName(c.name || '');
+                              setCustomerPhone(c.phone || '');
+                              setCustomerAddress(c.address || '');
+                              setCustomerEmail(c.email || '');
+                              setCustomerSearchQuery('');
+                              setIsNewCustomer(false);
+                            }}
+                          >
+                            <div className="font-medium">{c.name}</div>
+                            <div className="text-sm text-gray-500">{c.phone}</div>
+                          </div>
+                        ))}
+                      {customers.filter(c => {
+                        const q = customerSearchQuery.toLowerCase();
+                        return (c.name || '').toLowerCase().includes(q) || (c.phone || '').includes(q);
+                      }).length === 0 && (
+                        <div className="p-2 text-sm text-gray-500">No customers match your search</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="customerName" className="text-right">
                   Name
