@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
-import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +33,8 @@ export interface Bill {
   createdAt?: Date;
   date?: Date;
   payments?: Payment[]; // Add this line to support payments array
+  orderId?: string;
+  branch?: string;
 }
 
 const ManagePayments = () => {
@@ -42,6 +43,9 @@ const ManagePayments = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [processingPayment, setProcessingPayment] = useState<string | null>(null);
   const [monthlyEarnings, setMonthlyEarnings] = useState(0);
+  const [earningsPeriod, setEarningsPeriod] = useState<'today' | 'yesterday' | 'week' | 'month' | 'custom'>('month');
+  const [customRangeDialogOpen, setCustomRangeDialogOpen] = useState(false);
+  const [customRange, setCustomRange] = useState<{ from?: string; to?: string }>({});
   const [pendingAmount, setPendingAmount] = useState(0);
   const [viewingBill, setViewingBill] = useState<Bill | null>(null);
   const [viewingOrder, setViewingOrder] = useState<any | null>(null); // Replace 'any' with your Order type if available
@@ -49,77 +53,89 @@ const ManagePayments = () => {
   const [paymentAmount, setPaymentAmount] = useState<string>('');
   const [allBills, setAllBills] = useState<Bill[]>([]);
   const [showAllBills, setShowAllBills] = useState(false);
+  const [allPeriod, setAllPeriod] = useState<'30' | '90' | 'today' | 'yesterday' | 'week'>('30');
   const [allBillsLoading, setAllBillsLoading] = useState(false);
   const [allBillsError, setAllBillsError] = useState<string | null>(null);
-  const navigate = useNavigate();
   const { user } = useFirebaseAuth();
+
+  const getPeriodLabel = (p: '30' | '90' | 'today' | 'yesterday' | 'week') => {
+    switch (p) {
+      case 'today':
+        return 'Today';
+      case 'yesterday':
+        return 'Yesterday';
+      case 'week':
+        return 'This Week';
+      case '90':
+        return 'Last 90 Days';
+      default:
+        return 'Last 30 Days';
+    }
+  };
 
   useEffect(() => {
     loadPendingBills();
-    // Load all bills for the last month by default
-    loadAllBills();
+    // Load all bills for the selected period by default
+    loadAllBills(allPeriod);
+    // Also calculate initial earnings for the default period after bills load (loadPendingBills triggers calculateMetrics)
   }, []);
+
+  // Recalculate earnings when earningsPeriod or customRange changes
+  useEffect(() => {
+    // bills state contains the current pending bills (already branch-filtered)
+    calculateMetrics(bills, earningsPeriod, customRange);
+  }, [earningsPeriod, customRange]);
   
   const loadPendingBills = async () => {
     setIsLoading(true);
     try {
-      let pendingBills = await getBillsByStatus('pending');
-
-      // If delivery user, show only bills for their branch (assumption: user.branch exists)
-      if (user && user.role === 'delivery') {
-        const userBranch = (user as any).branch;
-        if (userBranch) {
-          pendingBills = pendingBills.filter((b: any) => b.branch === userBranch);
+      const pendingBills = await getBillsByStatus('pending');
+      // If the current user is a delivery user with a branch, only show bills for that branch
+      let branchFilteredBills = pendingBills;
+      try {
+        if (user && (user as any).role === 'delivery' && (user as any).branch) {
+          const userBranch = String((user as any).branch).toLowerCase();
+          branchFilteredBills = pendingBills.filter((b: any) => {
+            const billBranch = b.branch ? String(b.branch).toLowerCase() : '';
+            return billBranch === userBranch;
+          });
         }
+      } catch (err) {
+        // If anything goes wrong with branch filtering, fall back to unfiltered pendingBills
+        branchFilteredBills = pendingBills;
       }
       
       // Sort by date (oldest first)
-      pendingBills.sort((a, b) => {
+      branchFilteredBills.sort((a, b) => {
         const dateA = a.createdAt || a.date || new Date();
         const dateB = b.createdAt || b.date || new Date();
         return dateA.getTime() - dateB.getTime();
       });
-      
-      setBills(
-        pendingBills
-          .filter((b: any) => !!b.id)
-          .map((b: any) => ({
-            id: b.id ?? '',
-            customerName: b.customerName ?? '',
-            customerPhone: b.customerPhone ?? '',
-            items: b.items ?? [],
-            subtotal: b.subtotal ?? 0,
-            tax: b.tax ?? 0,
-            total: b.total ?? 0,
-            status: b.status ?? 'pending',
-            paymentMethod: b.paymentMethod,
-            paymentDate: b.paymentDate,
-            createdAt: b.createdAt,
-            date: b.date,
-            payments: b.payments,
-          }))
-      );
-      
-      // Calculate metrics
-      calculateMetrics(
-        pendingBills
-          .filter((b: any) => !!b.id)
-          .map((b: any) => ({
-            id: b.id ?? '',
-            customerName: b.customerName ?? '',
-            customerPhone: b.customerPhone ?? '',
-            items: b.items ?? [],
-            subtotal: b.subtotal ?? 0,
-            tax: b.tax ?? 0,
-            total: b.total ?? 0,
-            status: b.status ?? 'pending',
-            paymentMethod: b.paymentMethod,
-            paymentDate: b.paymentDate,
-            createdAt: b.createdAt,
-            date: b.date,
-            payments: b.payments,
-          }))
-      );
+
+      const normalized = branchFilteredBills
+        .filter((b: any) => !!b.id)
+        .map((b: any) => ({
+          id: b.id ?? '',
+          orderId: b.orderId ?? b.orderId ?? '',
+          branch: b.branch ?? '',
+          customerName: b.customerName ?? '',
+          customerPhone: b.customerPhone ?? '',
+          items: b.items ?? [],
+          subtotal: b.subtotal ?? 0,
+          tax: b.tax ?? 0,
+          total: b.total ?? 0,
+          status: b.status ?? 'pending',
+          paymentMethod: b.paymentMethod,
+          paymentDate: b.paymentDate,
+          createdAt: b.createdAt,
+          date: b.date,
+          payments: b.payments,
+        }));
+
+      setBills(normalized);
+
+      // Calculate metrics using the same branch-filtered list
+      calculateMetrics(normalized);
     } catch (error) {
       console.error('Error loading bills:', error);
       toast({
@@ -132,23 +148,45 @@ const ManagePayments = () => {
     }
   };
 
-  const loadAllBills = async (durationDays = 30) => {
+  const loadAllBills = async (period: '30' | '90' | 'today' | 'yesterday' | 'week' | number = '30') => {
     setAllBillsLoading(true);
     setAllBillsError(null);
     try {
-      // Get all bills (paid and pending)
+      // Determine since/until range based on period
       const now = new Date();
-      const since = new Date(now.getTime() - durationDays * 24 * 60 * 60 * 1000);
-      // Assume getBillsByStatus('all') returns all bills, or fetch all bills from your service
+      let since: Date;
+      let until: Date | undefined = undefined;
+
+      if (period === 'today') {
+        since = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        until = new Date(since.getTime() + 24 * 60 * 60 * 1000);
+      } else if (period === 'yesterday') {
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        since = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
+        until = todayStart;
+      } else if (period === 'week') {
+        // Start of current week (Sunday)
+        const startOfWeek = new Date(now);
+        startOfWeek.setHours(0, 0, 0, 0);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        since = startOfWeek;
+      } else {
+        // numeric days (30 or 90) or provided number
+        const days = typeof period === 'number' ? period : (period === '90' ? 90 : 30);
+        since = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+      }
+
+      // Fetch both paid and pending bills and merge them
       let all: Bill[] = [];
       try {
-        // Fetch both paid and pending bills and merge them
         const paid = await getBillsByStatus('paid');
         const pending = await getBillsByStatus('pending');
         all = [...paid, ...pending]
           .filter((b: any) => !!b.id)
           .map((b: any) => ({
             id: b.id ?? '',
+            orderId: b.orderId ?? '',
+            branch: b.branch ?? '',
             customerName: b.customerName ?? '',
             customerPhone: b.customerPhone ?? '',
             items: b.items ?? [],
@@ -165,17 +203,23 @@ const ManagePayments = () => {
       } catch {
         all = [];
       }
-      // Filter by date
+
+      // Filter by date range
       all = all.filter(bill => {
         const billDate = bill.createdAt || bill.date || new Date();
+        if (until) {
+          return billDate >= since && billDate < until;
+        }
         return billDate >= since;
       });
+
       // Sort by date (newest first)
       all.sort((a, b) => {
         const dateA = a.createdAt || a.date || new Date();
         const dateB = b.createdAt || b.date || new Date();
         return dateB.getTime() - dateA.getTime();
       });
+
       setAllBills(all);
     } catch (error) {
       setAllBillsError('Failed to load all bills');
@@ -184,11 +228,36 @@ const ManagePayments = () => {
     }
   };
   
-  const calculateMetrics = async (pendingBills: Bill[]) => {
+  const calculateMetrics = async (pendingBills: Bill[], period: 'today' | 'yesterday' | 'week' | 'month' | 'custom' = 'month', custom?: { from?: string; to?: string }) => {
     try {
-      // Get all bills for the current month
+      // Determine date range for earnings calculation
       const now = new Date();
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      let since: Date;
+      let until: Date | undefined;
+
+      if (period === 'today') {
+        since = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        until = new Date(since.getTime() + 24 * 60 * 60 * 1000);
+      } else if (period === 'yesterday') {
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        since = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
+        until = todayStart;
+      } else if (period === 'week') {
+        const startOfWeek = new Date(now);
+        startOfWeek.setHours(0, 0, 0, 0);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        since = startOfWeek;
+      } else if (period === 'custom' && custom && custom.from) {
+        since = new Date(custom.from);
+        if (custom.to) {
+          // include the whole 'to' day
+          const toDate = new Date(custom.to);
+          until = new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate() + 1);
+        }
+      } else {
+        // month
+        since = new Date(now.getFullYear(), now.getMonth(), 1);
+      }
 
       const paidBills = await getBillsByStatus('paid');
       // Also get partial payments from pending bills
@@ -201,20 +270,27 @@ const ManagePayments = () => {
             if (payment.date instanceof Date) {
               paymentDate = payment.date;
             }
-            if (paymentDate && paymentDate >= firstDayOfMonth) {
-              partialPayments += typeof payment.amount === 'number' ? payment.amount : 0;
+            if (paymentDate) {
+              const afterSince = !since || paymentDate >= since;
+              const beforeUntil = !until || paymentDate < until;
+              if (afterSince && beforeUntil) {
+                partialPayments += typeof payment.amount === 'number' ? payment.amount : 0;
+              }
             }
           }
         }
       }
 
-      const thisMonthPaidBills = paidBills.filter(bill => {
+      const paidInRange = paidBills.filter(bill => {
         const billDate = bill.paymentDate || bill.createdAt || bill.date;
-        return billDate && billDate >= firstDayOfMonth;
+        if (!billDate) return false;
+        const afterSince = !since || billDate >= since;
+        const beforeUntil = !until || billDate < until;
+        return afterSince && beforeUntil;
       });
 
-      // Calculate earnings: paid bills + partial payments from pending bills
-      const earnings = thisMonthPaidBills.reduce((sum, bill) => sum + bill.total, 0) + partialPayments;
+      // Calculate earnings: paid bills in range + partial payments from pending bills in range
+      const earnings = paidInRange.reduce((sum, bill) => sum + bill.total, 0) + partialPayments;
       setMonthlyEarnings(earnings);
 
       // Calculate pending amount (just sum of pending bills' total)
@@ -307,20 +383,13 @@ const ManagePayments = () => {
       {/* Pending Payments Card should be on top */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <Card>
-          <CardHeader className="pb-2 flex items-center justify-between">
+          <CardHeader className="pb-2">
             <CardTitle className="text-lg">Pending Payments</CardTitle>
-            
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-amber-600">₹{pendingAmount.toFixed(2)}</p>
+            <p className="text-sm text-gray-500 mt-1">{bills.length} bills pending</p>
             
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => navigate('/delivery-dashboard', { state: { activeTab: 'activeOrders', deliveryInnerTab: 'assigned' } })}
-            >
-              <p className="text-sm text-gray-500 mt-1">{bills.length} bills pending</p>
-                          </Button>
           </CardContent>
         </Card>
         <Card>
@@ -328,8 +397,29 @@ const ManagePayments = () => {
             <CardTitle className="text-lg">Monthly Earnings</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-green-600">₹{monthlyEarnings.toFixed(2)}</p>
-            <p className="text-sm text-gray-500 mt-1">{format(new Date(), 'MMMM yyyy')}</p>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <p className="text-3xl font-bold text-green-600">₹{monthlyEarnings.toFixed(2)}</p>
+                <p className="text-sm text-gray-500 mt-1">{earningsPeriod === 'custom' && customRange.from && customRange.to ? `${format(new Date(customRange.from), 'dd MMM yyyy')} - ${format(new Date(customRange.to), 'dd MMM yyyy')}` : (earningsPeriod === 'today' ? 'Today' : earningsPeriod === 'yesterday' ? 'Yesterday' : earningsPeriod === 'week' ? 'This Week' : format(new Date(), 'MMMM yyyy'))}</p>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <Button size="sm" variant={earningsPeriod === 'today' ? 'default' : 'ghost'} onClick={async () => { setEarningsPeriod('today'); await calculateMetrics(bills, 'today'); }}>
+                  Today
+                </Button>
+                <Button size="sm" variant={earningsPeriod === 'yesterday' ? 'default' : 'ghost'} onClick={async () => { setEarningsPeriod('yesterday'); await calculateMetrics(bills, 'yesterday'); }}>
+                  Yesterday
+                </Button>
+                <Button size="sm" variant={earningsPeriod === 'week' ? 'default' : 'ghost'} onClick={async () => { setEarningsPeriod('week'); await calculateMetrics(bills, 'week'); }}>
+                  This Week
+                </Button>
+                <Button size="sm" variant={earningsPeriod === 'month' ? 'default' : 'ghost'} onClick={async () => { setEarningsPeriod('month'); await calculateMetrics(bills, 'month'); }}>
+                  This Month
+                </Button>
+                <Button size="sm" variant={earningsPeriod === 'custom' ? 'default' : 'outline'} onClick={() => { setEarningsPeriod('custom'); setCustomRangeDialogOpen(true); }}>
+                  Custom Range
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -387,10 +477,15 @@ const ManagePayments = () => {
                             <User className="h-4 w-4 mr-1 text-gray-400" /> 
                             {bill.customerName}
                           </div>
-                          <div className="text-sm text-gray-500 flex items-center">
-                            <Phone className="h-3 w-3 mr-1" /> 
-                            {bill.customerPhone}
-                          </div>
+                                <div className="text-sm text-gray-500 flex items-center flex-col md:flex-row md:items-center">
+                                  <div className="flex items-center">
+                                    <Phone className="h-3 w-3 mr-1" /> 
+                                    {bill.customerPhone}
+                                  </div>
+                                  {bill.branch && (
+                                    <div className="text-xs text-gray-400 ml-3 mt-1 md:mt-0">Branch: {bill.branch}</div>
+                                  )}
+                                </div>
                         </div>
                       </div>
                     </td>
@@ -446,6 +541,33 @@ const ManagePayments = () => {
         )}
       </div>
 
+      {/* Custom Range Dialog for earnings */}
+      <Dialog open={customRangeDialogOpen} onOpenChange={(open) => { if (!open) setCustomRangeDialogOpen(false); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select custom range</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="from">From</Label>
+              <input id="from" type="date" value={customRange.from || ''} onChange={(e) => setCustomRange(prev => ({ ...prev, from: e.target.value }))} className="w-full border rounded px-3 py-2 mt-1" />
+            </div>
+            <div>
+              <Label htmlFor="to">To</Label>
+              <input id="to" type="date" value={customRange.to || ''} onChange={(e) => setCustomRange(prev => ({ ...prev, to: e.target.value }))} className="w-full border rounded px-3 py-2 mt-1" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setCustomRangeDialogOpen(false); }}>Cancel</Button>
+            <Button onClick={async () => {
+              setCustomRangeDialogOpen(false);
+              // Recalculate earnings using custom range
+              await calculateMetrics(bills, 'custom', customRange);
+            }} disabled={!customRange.from || !customRange.to}>Apply</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Bill Viewer Dialog */}
       {viewingBill && (
         <Dialog open={!!viewingBill} onOpenChange={() => setViewingBill(null)}>
@@ -456,7 +578,7 @@ const ManagePayments = () => {
             <div className="space-y-4">
               <div className="border-b pb-2">
                 <div className="text-sm text-gray-500">Bill ID</div>
-                <div className="font-medium">{viewingBill.id}</div>
+                  <div className="font-medium">{viewingBill.orderId || viewingBill.id}</div>
               </div>
               <div>
                 <div className="text-sm font-medium mb-2">Items</div>
@@ -484,26 +606,7 @@ const ManagePayments = () => {
                 </ul>
               </div>
               <div className="border-t pt-2 space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span>Subtotal</span>
-                  <span>
-                    ₹
-                    {typeof viewingBill.subtotal === 'number'
-                      ? viewingBill.subtotal.toFixed(2)
-                      : "0.00"
-                    }
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Tax</span>
-                  <span>
-                    ₹
-                    {typeof viewingBill.tax === 'number'
-                      ? viewingBill.tax.toFixed(2)
-                      : "0.00"
-                    }
-                  </span>
-                </div>
+                
                 <div className="flex justify-between font-bold mt-2">
                   <span>Total</span>
                   <span>
@@ -556,17 +659,17 @@ const ManagePayments = () => {
                     // Draw logo before VK Wash Invoice
                     const logo = new window.Image();
                     // Use absolute public path for images placed in the public folder
-                    logo.src = "/pictures/VK logo.png";
+                    logo.src = "/pictures/vk.png";
                     logo.onload = async () => {
-                      // Set logo size to match font height (28px)
-                      const logoSize = 28;
+                      // Set logo size to match font height (40px)
+                      const logoSize = 40;
                       ctx.drawImage(logo, 30, 22, logoSize, logoSize);
 
                       // Title next to logo
                       ctx.fillStyle = "#222";
                       ctx.font = "bold 28px Arial";
                       ctx.textBaseline = "top";
-                      ctx.fillText("VK Wash Invoice", 30 + logoSize + 12, 22);
+                      ctx.fillText("VK Wash", 30 + logoSize + 12, 22);
 
                       // Customer Info
                       ctx.font = "16px Arial";
@@ -575,7 +678,7 @@ const ManagePayments = () => {
                       ctx.fillText(`Phone: ${viewingBill.customerPhone || ""}`, 30, 120);
 
                       // Bill Info
-                      ctx.fillText(`Bill ID: ${viewingBill.id || ""}`, 30, 150);
+                      ctx.fillText(`Bill ID: ${viewingBill.orderId || ""}`, 30, 150);
                       ctx.fillText(
                         `Date: ${
                           viewingBill.createdAt
@@ -619,8 +722,6 @@ const ManagePayments = () => {
                       // Totals
                       y += 10;
                       ctx.font = "bold 16px Arial";
-                      ctx.fillText(`Subtotal: ₹${viewingBill.subtotal?.toFixed(2) || "0.00"}`, 30, y);
-                      ctx.fillText(`Tax: ₹${viewingBill.tax?.toFixed(2) || "0.00"}`, 30, y + 30);
                       ctx.fillText(`Total: ₹${viewingBill.total?.toFixed(2) || "0.00"}`, 30, y + 60);
                       ctx.fillText(
                         `Status: ${viewingBill.status === "paid" ? "Paid" : "Pending Payment"}`,
@@ -642,7 +743,7 @@ const ManagePayments = () => {
                           blob,
                           viewingBill.customerPhone || "",
                           viewingBill.customerName || "",
-                          viewingBill.id || "invoice",
+                          viewingBill.orderId || "invoice",
                           viewingBill.total // Pass amount for UPI link
                         );
                       }, "image/png");
@@ -662,18 +763,39 @@ const ManagePayments = () => {
      {/* All Bills Card */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle>All Bills (Last {showAllBills ? '90' : '30'} Days)</CardTitle>
-          <Button
-
-           size="sm"
-            variant="outline"
-            onClick={() => {
-              setShowAllBills(!showAllBills);
-              loadAllBills(showAllBills ? 30 : 90);
-            }}
-          >
-            {showAllBills ? 'Show 30 Days' : 'Show 90 Days'}
-          </Button>
+          <CardTitle>All Bills ({getPeriodLabel(allPeriod)})</CardTitle>
+          <div className="flex gap-2">
+            <button
+              className={`px-3 py-1 text-sm rounded ${allPeriod === 'yesterday' ? 'bg-blue-600 text-white' : 'border'}`}
+              onClick={() => { setAllPeriod('yesterday'); loadAllBills('yesterday'); }}
+            >
+              Yesterday
+            </button>
+            <button
+              className={`px-3 py-1 text-sm rounded ${allPeriod === 'today' ? 'bg-blue-600 text-white' : 'border'}`}
+              onClick={() => { setAllPeriod('today'); loadAllBills('today'); }}
+            >
+              Today
+            </button>
+            <button
+              className={`px-3 py-1 text-sm rounded ${allPeriod === 'week' ? 'bg-blue-600 text-white' : 'border'}`}
+              onClick={() => { setAllPeriod('week'); loadAllBills('week'); }}
+            >
+              This Week
+            </button>
+            <button
+              className={`px-3 py-1 text-sm rounded ${allPeriod === '30' ? 'bg-blue-600 text-white' : 'border'}`}
+              onClick={() => { setAllPeriod('30'); loadAllBills('30'); }}
+            >
+              30 Days
+            </button>
+            <button
+              className={`px-3 py-1 text-sm rounded ${allPeriod === '90' ? 'bg-blue-600 text-white' : 'border'}`}
+              onClick={() => { setAllPeriod('90'); loadAllBills('90'); }}
+            >
+              90 Days
+            </button>
+          </div>
         </CardHeader>
         <CardContent>
           {allBillsLoading ? (
@@ -690,6 +812,7 @@ const ManagePayments = () => {
                 <thead>
                   <tr>
                     <th className="px-4 py-2 text-left">Bill ID</th>
+                    <th className="px-4 py-2 text-left">Branch</th>
                     <th className="px-4 py-2 text-left">Customer</th>
                     <th className="px-4 py-2 text-left">Date</th>
                     <th className="px-4 py-2 text-left">Amount</th>
@@ -699,7 +822,8 @@ const ManagePayments = () => {
                 <tbody>
                   {allBills.map(bill => (
                     <tr key={bill.id} className="border-b">
-                      <td className="px-4 py-2">{bill.id?.slice(0, 8)}</td>
+                      <td className="px-4 py-2">{bill.orderId ? bill.orderId : (bill.id?.slice(0, 8) ?? '')}</td>
+                      <td className="px-4 py-2">{bill.branch ?? '-'}</td>
                       <td className="px-4 py-2">{bill.customerName} ({bill.customerPhone})</td>
                       <td className="px-4 py-2">
                         {bill.createdAt

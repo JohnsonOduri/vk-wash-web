@@ -8,21 +8,24 @@ import {
   query, 
   where, 
   serverTimestamp,
-  Timestamp,
   deleteDoc,
-  orderBy
+  orderBy,
+  increment,
+  setDoc
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { LaundryItem, Bill, OrderItem } from '@/models/LaundryItem';
+import { LaundryItem, Bill } from '@/models/LaundryItem';
+
+/* --------------------------- Laundry Item APIs --------------------------- */
 
 export const createLaundryItem = async (itemData: Partial<LaundryItem>): Promise<string> => {
   const itemWithTimestamp = {
     ...itemData,
     createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
     status: itemData.status || 'pending',
     quantity: itemData.quantity || 1,
     customerId: itemData.customerId || '',
-    updatedAt: serverTimestamp()
   };
 
   const docRef = await addDoc(collection(db, 'laundryItems'), itemWithTimestamp);
@@ -32,57 +35,7 @@ export const createLaundryItem = async (itemData: Partial<LaundryItem>): Promise
 export const getAllLaundryItems = async (): Promise<LaundryItem[]> => {
   const querySnapshot = await getDocs(collection(db, 'laundryItems'));
   
-  const items: LaundryItem[] = [];
-  querySnapshot.forEach((doc) => {
-    const data = doc.data();
-    items.push({
-      id: doc.id,
-      name: data.name,
-      price: data.price,
-      category: data.category,
-      createdAt: data.createdAt?.toDate() || new Date(),
-      status: data.status || 'pending',
-      quantity: data.quantity || 1, 
-      customerId: data.customerId || '',
-      updatedAt: data.updatedAt?.toDate() || new Date()
-    } as LaundryItem);
-  });
-  
-  return items;
-};
-
-export const getLaundryItemByCategory = async (category: string): Promise<LaundryItem[]> => {
-  const q = query(
-    collection(db, 'laundryItems'),
-    where('category', '==', category)
-  );
-  
-  const querySnapshot = await getDocs(q);
-  
-  const items: LaundryItem[] = [];
-  querySnapshot.forEach((doc) => {
-    const data = doc.data();
-    items.push({
-      id: doc.id,
-      name: data.name,
-      price: data.price,
-      category: data.category,
-      createdAt: data.createdAt?.toDate() || new Date(),
-      status: data.status || 'pending',
-      quantity: data.quantity || 1, 
-      customerId: data.customerId || '',
-      updatedAt: data.updatedAt?.toDate() || new Date()
-    } as LaundryItem);
-  });
-  
-  return items;
-};
-
-export const getLaundryItemById = async (itemId: string): Promise<LaundryItem | null> => {
-  const docRef = doc(db, 'laundryItems', itemId);
-  const docSnap = await getDoc(docRef);
-  
-  if (docSnap.exists()) {
+  return querySnapshot.docs.map((docSnap) => {
     const data = docSnap.data();
     return {
       id: docSnap.id,
@@ -90,26 +43,99 @@ export const getLaundryItemById = async (itemId: string): Promise<LaundryItem | 
       price: data.price,
       category: data.category,
       createdAt: data.createdAt?.toDate() || new Date(),
+      updatedAt: data.updatedAt?.toDate() || new Date(),
       status: data.status || 'pending',
       quantity: data.quantity || 1,
-      customerId: data.customerId || '',
-      updatedAt: data.updatedAt?.toDate() || new Date()
+      customerId: data.customerId || ''
     } as LaundryItem;
-  }
+  });
+};
+
+export const getLaundryItemByCategory = async (category: string): Promise<LaundryItem[]> => {
+  const q = query(collection(db, 'laundryItems'), where('category', '==', category));
+  const querySnapshot = await getDocs(q);
   
-  return null;
+  return querySnapshot.docs.map((docSnap) => {
+    const data = docSnap.data();
+    return {
+      id: docSnap.id,
+      name: data.name,
+      price: data.price,
+      category: data.category,
+      createdAt: data.createdAt?.toDate() || new Date(),
+      updatedAt: data.updatedAt?.toDate() || new Date(),
+      status: data.status || 'pending',
+      quantity: data.quantity || 1,
+      customerId: data.customerId || ''
+    } as LaundryItem;
+  });
+};
+
+export const getLaundryItemById = async (itemId: string): Promise<LaundryItem | null> => {
+  const docRef = doc(db, 'laundryItems', itemId);
+  const docSnap = await getDoc(docRef);
+  
+  if (!docSnap.exists()) return null;
+
+  const data = docSnap.data();
+  return {
+    id: docSnap.id,
+    name: data.name,
+    price: data.price,
+    category: data.category,
+    createdAt: data.createdAt?.toDate() || new Date(),
+    updatedAt: data.updatedAt?.toDate() || new Date(),
+    status: data.status || 'pending',
+    quantity: data.quantity || 1,
+    customerId: data.customerId || ''
+  } as LaundryItem;
 };
 
 export const deleteLaundryItem = async (itemId: string): Promise<void> => {
-  const docRef = doc(db, 'laundryItems', itemId);
-  await deleteDoc(docRef);
+  await deleteDoc(doc(db, 'laundryItems', itemId));
 };
 
+/* ------------------------------ Bill APIs ------------------------------ */
+
+/**
+ * Create a new Bill with branch-specific atomic counter
+ * Uses Firestore increment() instead of transaction to prevent 429 errors
+ */
 export const createBill = async (billData: Omit<Bill, 'id' | 'status' | 'createdAt'>): Promise<string> => {
+  // Normalize branch code
+  const branchRaw = (billData as any).branch ? String((billData as any).branch) : 'DEF';
+  const branchCode = branchRaw.replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase().padEnd(3, 'X');
+
+  const counterDocRef = doc(db, 'counters', `bills_${branchCode}`);
+
+  // Step 1: Safely increment counter atomically
+  try {
+    await updateDoc(counterDocRef, { count: increment(1) });
+  } catch (err: any) {
+    // If counter document doesn’t exist yet, create it
+    if (err.code === 'not-found') {
+      await setDoc(counterDocRef, { count: 1 });
+    } else {
+      console.error('Error updating counter:', err);
+      throw err;
+    }
+  }
+
+  // Step 2: Read updated counter value once (not in a transaction)
+  const counterSnap = await getDoc(counterDocRef);
+  const nextSeq = (counterSnap.data()?.count as number) || 1;
+
+  // Step 3: Generate formatted Order ID
+  const width = Math.max(4, String(nextSeq).length);
+  const padded = String(nextSeq).padStart(width, '0');
+  const orderId = `VK-${branchCode}-${padded}`;
+
+  // Step 4: Add bill document
   const billWithDetails = {
     ...billData,
+    orderId,
     createdAt: serverTimestamp(),
-    date: serverTimestamp(), // Adding for backwards compatibility
+    date: serverTimestamp(),
     status: 'pending'
   };
 
@@ -120,86 +146,48 @@ export const createBill = async (billData: Omit<Bill, 'id' | 'status' | 'created
 export const getBillsByCustomerId = async (customerId: string): Promise<Bill[]> => {
   const q = query(collection(db, 'bills'), where('customerId', '==', customerId));
   const querySnapshot = await getDocs(q);
-  
-  const bills: Bill[] = [];
-  querySnapshot.forEach((doc) => {
-    const data = doc.data();
-    bills.push({
-      id: doc.id,
-      customerId: data.customerId,
-      customerName: data.customerName,
-      customerPhone: data.customerPhone,
+
+  return querySnapshot.docs.map((docSnap) => {
+    const data = docSnap.data();
+    return {
+      id: docSnap.id,
+      ...data,
       date: data.date?.toDate(),
       createdAt: data.createdAt?.toDate() || data.date?.toDate() || new Date(),
-      items: data.items,
-      subtotal: data.subtotal,
-      total: data.total,
-      status: data.status,
-      paymentMethod: data.paymentMethod,
-      paymentDate: data.paymentDate ? data.paymentDate.toDate() : undefined,
-      orderId: data.orderId
-    } as Bill);
+      paymentDate: data.paymentDate ? data.paymentDate.toDate() : undefined
+    } as Bill;
   });
-  
-  return bills;
 };
 
 export const getBillById = async (billId: string): Promise<Bill | null> => {
   const docRef = doc(db, 'bills', billId);
   const docSnap = await getDoc(docRef);
-  
-  if (docSnap.exists()) {
-    const data = docSnap.data();
-    return {
-      id: docSnap.id,
-      customerId: data.customerId,
-      customerName: data.customerName,
-      customerPhone: data.customerPhone,
-      date: data.date?.toDate(),
-      createdAt: data.createdAt?.toDate() || data.date?.toDate() || new Date(),
-      items: data.items,
-      subtotal: data.subtotal,
-      total: data.total,
-      status: data.status,
-      paymentMethod: data.paymentMethod,
-      paymentDate: data.paymentDate ? data.paymentDate.toDate() : undefined,
-      orderId: data.orderId
-    } as Bill;
-  }
-  
-  return null;
+  if (!docSnap.exists()) return null;
+
+  const data = docSnap.data();
+  return {
+    id: docSnap.id,
+    ...data,
+    date: data.date?.toDate(),
+    createdAt: data.createdAt?.toDate() || data.date?.toDate() || new Date(),
+    paymentDate: data.paymentDate ? data.paymentDate.toDate() : undefined
+  } as Bill;
 };
 
 export const getBillsByStatus = async (status: 'pending' | 'paid' | 'cancelled'): Promise<Bill[]> => {
-  const q = query(
-    collection(db, 'bills'), 
-    where('status', '==', status),
-    orderBy('createdAt', 'desc')
-  );
-  
+  const q = query(collection(db, 'bills'), where('status', '==', status), orderBy('createdAt', 'desc'));
   const querySnapshot = await getDocs(q);
-  
-  const bills: Bill[] = [];
-  querySnapshot.forEach((doc) => {
-    const data = doc.data();
-    bills.push({
-      id: doc.id,
-      customerId: data.customerId,
-      customerName: data.customerName,
-      customerPhone: data.customerPhone,
+
+  return querySnapshot.docs.map((docSnap) => {
+    const data = docSnap.data();
+    return {
+      id: docSnap.id,
+      ...data,
       date: data.date?.toDate(),
-      createdAt: data.createdAt?.toDate() || data.date?.toDate() || new Date(),
-      items: data.items,
-      subtotal: data.subtotal,
-      total: data.total,
-      status: data.status,
-      paymentMethod: data.paymentMethod,
-      paymentDate: data.paymentDate ? data.paymentDate.toDate() : undefined,
-      orderId: data.orderId
-    } as Bill);
+      createdAt: data.createdAt?.toDate() || new Date(),
+      paymentDate: data.paymentDate ? data.paymentDate.toDate() : undefined
+    } as Bill;
   });
-  
-  return bills;
 };
 
 export const updateBillPayment = async (
@@ -211,7 +199,6 @@ export const updateBillPayment = async (
   const docRef = doc(db, 'bills', billId);
 
   if (typeof paidAmount === 'number' && typeof pendingAmount === 'number') {
-    // Partial payment: update total to pending amount and keep status as pending
     await updateDoc(docRef, {
       total: pendingAmount,
       status: 'pending',
@@ -219,7 +206,6 @@ export const updateBillPayment = async (
       paymentDate: serverTimestamp(),
     });
   } else {
-    // Full payment: mark as paid
     await updateDoc(docRef, {
       status: 'paid',
       paymentMethod,
@@ -231,70 +217,52 @@ export const updateBillPayment = async (
 export const getBillsByOrderId = async (orderId: string): Promise<Bill | null> => {
   const q = query(collection(db, 'bills'), where('orderId', '==', orderId));
   const querySnapshot = await getDocs(q);
-  
-  if (querySnapshot.empty) {
-    return null;
-  }
-  
-  const doc = querySnapshot.docs[0];
-  const data = doc.data();
-  
+
+  if (querySnapshot.empty) return null;
+
+  const docSnap = querySnapshot.docs[0];
+  const data = docSnap.data();
+
   return {
-    id: doc.id,
-    customerId: data.customerId,
-    customerName: data.customerName,
-    customerPhone: data.customerPhone,
+    id: docSnap.id,
+    ...data,
     date: data.date?.toDate(),
     createdAt: data.createdAt?.toDate() || data.date?.toDate() || new Date(),
-    items: data.items,
-    subtotal: data.subtotal,
-    total: data.total,
-    status: data.status,
-    paymentMethod: data.paymentMethod,
-    paymentDate: data.paymentDate ? data.paymentDate.toDate() : undefined,
-    orderId: data.orderId
+    paymentDate: data.paymentDate ? data.paymentDate.toDate() : undefined
   } as Bill;
 };
 
 export const updateBillPartialPayment = async (billId: string, amount: number) => {
   try {
     const billRef = doc(db, 'bills', billId);
-    
-    // First get the current bill data
     const billDoc = await getDoc(billRef);
-    if (!billDoc.exists()) {
-      throw new Error('Bill not found');
-    }
-    
+
+    if (!billDoc.exists()) throw new Error('Bill not found');
+
     const billData = billDoc.data();
     const currentAmountPaid = billData.amountPaid || 0;
     const newAmountPaid = currentAmountPaid + amount;
-    
-    // Calculate remaining balance
     const totalAmount = billData.totalAmount || 0;
     const remainingBalance = totalAmount - newAmountPaid;
-    
-    // Update payment status if fully paid
     const paymentStatus = newAmountPaid >= totalAmount ? 'Paid' : 'Partially Paid';
-    
-    // Update the bill document
+
     await updateDoc(billRef, {
       amountPaid: newAmountPaid,
-      remainingBalance: remainingBalance,
-      paymentStatus: paymentStatus,
-      lastUpdated: new Date().toISOString()
+      remainingBalance,
+      paymentStatus,
+      lastUpdated: new Date().toISOString(),
     });
-    
+
     return {
       success: true,
       message: `Payment of ${amount} recorded successfully.`,
-      paymentStatus
+      paymentStatus,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating bill partial payment:', error);
     return {
       success: false,
-      message: `Error updating payment: ${error.message}`
+      message: `Error updating payment: ${error.message}`,
     };
   }
-}
+};

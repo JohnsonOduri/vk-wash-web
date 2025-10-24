@@ -388,7 +388,7 @@ const CreateBill = ({ orderId, customerInfo }) => {
                         const q = customerSearchQuery.toLowerCase();
                         return (c.name || '').toLowerCase().includes(q) || (c.phone || '').includes(q);
                       }).length === 0 && (
-                        <div className="p-2 text-sm text-gray-500">No customers match your search</div>
+                        <div className="p-2 text-sm text-gray-500">No customers match your search. Click "New Customer" to add a new customer.</div>
                       )}
                     </div>
                   )}
@@ -404,8 +404,8 @@ const CreateBill = ({ orderId, customerInfo }) => {
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                   className="col-span-3"
-                  placeholder="Customer Name"
-                  disabled={!!customerInfo}
+                  placeholder="Customer will be filled from search"
+                  disabled={true}
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
@@ -417,8 +417,8 @@ const CreateBill = ({ orderId, customerInfo }) => {
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
                   className="col-span-3"
-                  placeholder="Customer Phone"
-                  disabled={!!customerInfo}
+                  placeholder="Customer will be filled from search"
+                  disabled={true}
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
@@ -430,8 +430,8 @@ const CreateBill = ({ orderId, customerInfo }) => {
                   value={customerAddress}
                   onChange={(e) => setCustomerAddress(e.target.value)}
                   className="col-span-3"
-                  placeholder="Customer Address"
-                  disabled={!!customerInfo}
+                  placeholder="Customer will be filled from search"
+                  disabled={true}
                 />
               </div>
               {currentOrderId && (

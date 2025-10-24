@@ -32,4 +32,15 @@ export interface Bill {
   paymentMethod?: 'cash' | 'online' | 'card' | 'upi';
   paymentDate?: Date;
   orderId?: string;
+  // Optional delivery / metadata
+  branch?: string;
+  deliveryPersonId?: string;
+  deliveryPersonName?: string;
+  deliveryPersonPhone?: string;
+  // Array of partial payments if any
+  payments?: Array<{
+    amount: number;
+    method?: string;
+    date?: Date;
+  }>;
 }

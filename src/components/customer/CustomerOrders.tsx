@@ -622,7 +622,7 @@ const CustomerOrders = ({ customerId }: CustomerOrdersProps) => {
             <div className="space-y-4">
               <div className="border-b pb-2">
                 <div className="text-sm text-gray-500">Bill ID</div>
-                <div className="font-medium">{viewingBill.id}</div>
+                <div className="font-medium">{viewingBill.orderId}</div>
               </div>
               <div>
                 <div className="text-sm font-medium mb-2">Items</div>
