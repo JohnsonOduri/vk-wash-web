@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -58,6 +58,28 @@ const ManagePayments = () => {
   const [allBillsError, setAllBillsError] = useState<string | null>(null);
   const { user } = useFirebaseAuth();
 
+  // Branch selector for scoping revenue calculations. 'all' means include all branches.
+  const [selectedBranch, setSelectedBranch] = useState<string>('all');
+
+  // Derive known branches from pending and all bills
+  const branches = useMemo(() => {
+    const s = new Set<string>();
+    bills.forEach(b => { if (b.branch) s.add(String(b.branch)); });
+    allBills.forEach(b => { if (b.branch) s.add(String(b.branch)); });
+    return Array.from(s).sort();
+  }, [bills, allBills]);
+
+  // If the current user is a delivery user, default the selector to their branch when available
+  useEffect(() => {
+    try {
+      if (user && (user as any).role === 'delivery' && (user as any).branch) {
+        setSelectedBranch(String((user as any).branch));
+      }
+    } catch (err) {
+      // ignore
+    }
+  }, [user]);
+
   const getPeriodLabel = (p: '30' | '90' | 'today' | 'yesterday' | 'week') => {
     switch (p) {
       case 'today':
@@ -80,11 +102,11 @@ const ManagePayments = () => {
     // Also calculate initial earnings for the default period after bills load (loadPendingBills triggers calculateMetrics)
   }, []);
 
-  // Recalculate earnings when earningsPeriod or customRange changes
+  // Recalculate earnings when earningsPeriod, customRange, selected branch or bills change
   useEffect(() => {
     // bills state contains the current pending bills (already branch-filtered)
-    calculateMetrics(bills, earningsPeriod, customRange);
-  }, [earningsPeriod, customRange]);
+    calculateMetrics(bills, earningsPeriod, customRange, selectedBranch);
+  }, [earningsPeriod, customRange, selectedBranch, bills]);
   
   const loadPendingBills = async () => {
     setIsLoading(true);
@@ -135,7 +157,7 @@ const ManagePayments = () => {
       setBills(normalized);
 
       // Calculate metrics using the same branch-filtered list
-      calculateMetrics(normalized);
+  calculateMetrics(normalized, earningsPeriod, customRange, selectedBranch);
     } catch (error) {
       console.error('Error loading bills:', error);
       toast({
@@ -228,7 +250,12 @@ const ManagePayments = () => {
     }
   };
   
-  const calculateMetrics = async (pendingBills: Bill[], period: 'today' | 'yesterday' | 'week' | 'month' | 'custom' = 'month', custom?: { from?: string; to?: string }) => {
+  const calculateMetrics = async (
+    pendingBills: Bill[],
+    period: 'today' | 'yesterday' | 'week' | 'month' | 'custom' = 'month',
+    custom?: { from?: string; to?: string },
+    branch: string = 'all'
+  ) => {
     try {
       // Determine date range for earnings calculation
       const now = new Date();
@@ -259,10 +286,23 @@ const ManagePayments = () => {
         since = new Date(now.getFullYear(), now.getMonth(), 1);
       }
 
-      const paidBills = await getBillsByStatus('paid');
+      let paidBills: any[] = await getBillsByStatus('paid');
+      // If a specific branch is selected, filter paid bills to that branch
+      if (branch && branch !== 'all') {
+        try {
+          paidBills = paidBills.filter(b => (b.branch || '').toString().toLowerCase() === branch.toLowerCase());
+        } catch (err) {
+          // ignore if structure unexpected
+        }
+      }
       // Also get partial payments from pending bills
       let partialPayments = 0;
       for (const bill of pendingBills) {
+        // If a branch is selected, skip pending bills from other branches
+        if (branch && branch !== 'all') {
+          const billBranch = bill?.branch ? String(bill.branch).toLowerCase() : '';
+          if (billBranch !== branch.toLowerCase()) continue;
+        }
         if (Array.isArray(bill.payments)) {
           for (const payment of bill.payments) {
             // Only count payments made this month
@@ -381,38 +421,40 @@ const ManagePayments = () => {
       <h2 className="text-2xl font-bold">Manage Payments</h2>
       
       {/* Pending Payments Card should be on top */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">Pending Payments</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-amber-600">₹{pendingAmount.toFixed(2)}</p>
-            <p className="text-sm text-gray-500 mt-1">{bills.length} bills pending</p>
-            
+          {/* make this card more compact */}
+          <CardContent className="min-h-[72px] py-3">
+            <div className="flex items-center justify-between">
+              <p className="text-2xl font-semibold text-amber-600">₹{pendingAmount.toFixed(2)}</p>
+              <p className="text-sm text-gray-500">{bills.length} bills</p>
+            </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">Monthly Earnings</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
+          <CardContent className="min-h-[72px] py-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 whitespace-nowrap">
                 <p className="text-3xl font-bold text-green-600">₹{monthlyEarnings.toFixed(2)}</p>
-                <p className="text-sm text-gray-500 mt-1">{earningsPeriod === 'custom' && customRange.from && customRange.to ? `${format(new Date(customRange.from), 'dd MMM yyyy')} - ${format(new Date(customRange.to), 'dd MMM yyyy')}` : (earningsPeriod === 'today' ? 'Today' : earningsPeriod === 'yesterday' ? 'Yesterday' : earningsPeriod === 'week' ? 'This Week' : format(new Date(), 'MMMM yyyy'))}</p>
               </div>
-              <div className="flex gap-2 flex-wrap">
-                <Button size="sm" variant={earningsPeriod === 'today' ? 'default' : 'ghost'} onClick={async () => { setEarningsPeriod('today'); await calculateMetrics(bills, 'today'); }}>
+              <div className="flex gap-2 flex-wrap items-center">
+
+                <Button size="sm" variant={earningsPeriod === 'today' ? 'default' : 'ghost'} onClick={() => { setEarningsPeriod('today'); }}>
                   Today
                 </Button>
-                <Button size="sm" variant={earningsPeriod === 'yesterday' ? 'default' : 'ghost'} onClick={async () => { setEarningsPeriod('yesterday'); await calculateMetrics(bills, 'yesterday'); }}>
+                <Button size="sm" variant={earningsPeriod === 'yesterday' ? 'default' : 'ghost'} onClick={() => { setEarningsPeriod('yesterday'); }}>
                   Yesterday
                 </Button>
-                <Button size="sm" variant={earningsPeriod === 'week' ? 'default' : 'ghost'} onClick={async () => { setEarningsPeriod('week'); await calculateMetrics(bills, 'week'); }}>
+                <Button size="sm" variant={earningsPeriod === 'week' ? 'default' : 'ghost'} onClick={() => { setEarningsPeriod('week'); }}>
                   This Week
                 </Button>
-                <Button size="sm" variant={earningsPeriod === 'month' ? 'default' : 'ghost'} onClick={async () => { setEarningsPeriod('month'); await calculateMetrics(bills, 'month'); }}>
+                <Button size="sm" variant={earningsPeriod === 'month' ? 'default' : 'ghost'} onClick={() => { setEarningsPeriod('month'); }}>
                   This Month
                 </Button>
                 <Button size="sm" variant={earningsPeriod === 'custom' ? 'default' : 'outline'} onClick={() => { setEarningsPeriod('custom'); setCustomRangeDialogOpen(true); }}>
@@ -420,15 +462,6 @@ const ManagePayments = () => {
                 </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Total Revenue</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-blue-600">₹{(monthlyEarnings + pendingAmount).toFixed(2)}</p>
-            <p className="text-sm text-gray-500 mt-1">Paid + Pending</p>
           </CardContent>
         </Card>
       </div>
@@ -561,8 +594,8 @@ const ManagePayments = () => {
             <Button variant="outline" onClick={() => { setCustomRangeDialogOpen(false); }}>Cancel</Button>
             <Button onClick={async () => {
               setCustomRangeDialogOpen(false);
-              // Recalculate earnings using custom range
-              await calculateMetrics(bills, 'custom', customRange);
+              // Recalculate earnings using custom range and selected branch
+              await calculateMetrics(bills, 'custom', customRange, selectedBranch);
             }} disabled={!customRange.from || !customRange.to}>Apply</Button>
           </DialogFooter>
         </DialogContent>
@@ -937,7 +970,7 @@ async function uploadInvoiceImageAndShareWhatsApp(
 
   // Payment link
   const upiAmount = amount ? amount.toFixed(2) : "0";
-  const upiLink = `upi://pay?pa=vk149763@oksbi&pn=Vijay%20Kumar&am=${upiAmount}&cu=INR`;
+  const upiLink = `vk149763@okaxis`;
 
   // WhatsApp message with image link and payment link
   const phone = customerPhoneNumber.replace(/[^0-9]/g, "");
