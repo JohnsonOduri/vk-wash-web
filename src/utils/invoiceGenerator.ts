@@ -53,15 +53,35 @@ export async function generateAndShareInvoice(invoice: InvoiceData): Promise<voi
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
-        const data = await resp.json();
-        if (resp.ok && data.success && data.url) {
+
+        // Read as text first to avoid JSON parse errors from stray output
+        const text = await resp.text();
+        let data: any = null;
+        try { data = text ? JSON.parse(text) : null; } catch (e) { data = null; }
+
+        // Success path
+        if (resp.ok && data && data.success && data.url) {
           invoiceUrl = data.url;
+        // If server responded 409, try to use returned url or construct a predictable public URL using orderId
+        } else if (resp.status === 409) {
+          if (data && data.url) {
+            invoiceUrl = data.url;
+          } else {
+            // Fallback: construct the public invoice URL assuming invoices are served at /invoices/<orderId>.html
+            try {
+              invoiceUrl = `${window.location.origin}/invoices/${encodeURIComponent(invoice.orderId)}.html`;
+            } catch (e) {
+              invoiceUrl = `/invoices/${encodeURIComponent(invoice.orderId)}.html`;
+            }
+          }
+          toast({ title: 'Invoice Exists', description: 'Using existing invoice link', variant: 'default' });
         } else {
-          throw new Error(data.error || 'Failed to create invoice');
+          const errMsg = data && (data.error || data.message) ? (data.error || data.message) : (text || 'Failed to create invoice');
+          throw new Error(errMsg);
         }
       } catch (err) {
         console.error('Error creating invoice via PHP backend:', err);
-        toast({ title: 'Invoice Error', description: 'Failed to create invoice on server', variant: 'destructive' });
+        toast({ title: 'Invoice Error', description: String(err?.message || 'Failed to create invoice on server'), variant: 'destructive' });
         return;
       }
     }
