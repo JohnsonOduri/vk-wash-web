@@ -140,7 +140,43 @@ export const createBill = async (billData: Omit<Bill, 'id' | 'status' | 'created
   };
 
   const docRef = await addDoc(collection(db, 'bills'), billWithDetails);
-  return docRef.id;
+
+    // Async: try to create public invoice via PHP backend and attach URL to bill document
+    (async () => {
+      try {
+        const payload = {
+          orderId,
+          customerName: (billData as any).customerName || '',
+          customerPhone: (billData as any).customerPhone || '',
+          customerAddress: (billData as any).customerAddress || '',
+          creatorIdShort: '',
+          taxRatePct: (billData as any).tax || 0,
+          items: (billData as any).items?.map((it: any) => ({
+            description: it.name || it.description || '',
+            qty: it.quantity || it.qty || 1,
+            unitPrice: it.price || it.unitPrice || 0,
+          })) || []
+        };
+
+        const resp = await fetch('/create_invoice.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await resp.json();
+        if (resp.ok && data.success && data.url) {
+          try {
+            await attachInvoiceUrl(docRef.id, data.url);
+          } catch (e) {
+            console.warn('Failed to attach invoice URL after create:', e);
+          }
+        }
+      } catch (e) {
+        console.warn('Invoice creation (background) failed:', e);
+      }
+    })();
+
+    return docRef.id;
 };
 
 export const getBillsByCustomerId = async (customerId: string): Promise<Bill[]> => {
@@ -265,4 +301,16 @@ export const updateBillPartialPayment = async (billId: string, amount: number) =
       message: `Error updating payment: ${error.message}`,
     };
   }
+};
+
+/**
+ * Attach an invoice URL to a bill document.
+ * If billId is not found this will throw and should be handled by caller.
+ */
+export const attachInvoiceUrl = async (billId: string, invoiceUrl: string) => {
+  const docRef = doc(db, 'bills', billId);
+  await updateDoc(docRef, {
+    invoiceUrl,
+    invoiceUrlAddedAt: serverTimestamp(),
+  });
 };

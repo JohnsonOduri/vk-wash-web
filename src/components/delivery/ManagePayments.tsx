@@ -669,6 +669,7 @@ const ManagePayments = () => {
                   className="w-full"
                   onClick={async () => {
                     await generateAndShareInvoice({
+                      billId: viewingBill.id,
                       orderId: viewingBill.orderId || viewingBill.id,
                       customerName: viewingBill.customerName,
                       customerPhone: viewingBill.customerPhone,
@@ -679,6 +680,7 @@ const ManagePayments = () => {
                       status: viewingBill.status,
                       createdAt: viewingBill.createdAt,
                       branch: viewingBill.branch,
+                      invoiceUrl: (viewingBill as any).invoiceUrl || undefined,
                     });
                   }}
                 >
