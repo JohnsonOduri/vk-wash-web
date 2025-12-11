@@ -8,10 +8,9 @@ import { toast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getBillsByStatus, updateBillPayment } from '@/services/laundryItemService';
 import { format } from 'date-fns';
-import { CreditCard, Check, Phone, User, Calendar } from 'lucide-react';
+import { CreditCard, Check, Phone, User, Calendar, Share2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import { generateAndShareInvoice } from '@/utils/invoiceGenerator';
 
 export interface Payment {
   amount: number;
@@ -663,127 +662,28 @@ const ManagePayments = () => {
                   <div className="font-medium">{viewingBill.paymentMethod}</div>
                 </div>
               )}
-              {/* See Order Details button */}
+              {/* Share Invoice button */}
               <div className="pt-2">
                 <Button
                   variant="outline"
                   className="w-full"
                   onClick={async () => {
-                    // Generate an image (canvas) for the bill
-                    const width = 600;
-                    const height = 400 + (viewingBill.items.length * 30);
-                    const canvas = document.createElement("canvas");
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext("2d");
-                    if (!ctx) {
-                      toast({
-                        title: "Error",
-                        description: "Could not generate invoice image.",
-                        variant: "destructive",
-                      });
-                      return;
-                    }
-
-                    // Background
-                    ctx.fillStyle = "#fff";
-                    ctx.fillRect(0, 0, width, height);
-
-                    // Draw logo before VK Wash Invoice
-                    const logo = new window.Image();
-                    // Use absolute public path for images placed in the public folder
-                    logo.src = "/pictures/vk.png";
-                    logo.onload = async () => {
-                      // Set logo size to match font height (40px)
-                      const logoSize = 40;
-                      ctx.drawImage(logo, 30, 22, logoSize, logoSize);
-
-                      // Title next to logo
-                      ctx.fillStyle = "#222";
-                      ctx.font = "bold 28px Arial";
-                      ctx.textBaseline = "top";
-                      ctx.fillText("VK Wash", 30 + logoSize + 12, 22);
-
-                      // Customer Info
-                      ctx.font = "16px Arial";
-                      ctx.textBaseline = "alphabetic";
-                      ctx.fillText(`Customer Name: ${viewingBill.customerName || ""}`, 30, 90);
-                      ctx.fillText(`Phone: ${viewingBill.customerPhone || ""}`, 30, 120);
-
-                      // Bill Info
-                      ctx.fillText(`Bill ID: ${viewingBill.orderId || ""}`, 30, 150);
-                      ctx.fillText(
-                        `Date: ${
-                          viewingBill.createdAt
-                            ? (typeof viewingBill.createdAt === "string"
-                                ? viewingBill.createdAt
-                                : new Date(viewingBill.createdAt).toLocaleString())
-                            : ""
-                        }`,
-                        30,
-                        180
-                      );
-
-                      // Table Headers
-                      ctx.font = "bold 16px Arial";
-                      ctx.fillText("Item", 30, 220);
-                      ctx.fillText("Category", 200, 220);
-                      ctx.fillText("Qty", 320, 220);
-                      ctx.fillText("Price", 380, 220);
-                      ctx.fillText("Total", 470, 220);
-
-                      // Table Rows
-                      ctx.font = "16px Arial";
-                      let y = 250;
-                      viewingBill.items.forEach((item) => {
-                        ctx.fillText(item.name, 30, y);
-                        ctx.fillText(item.category || "", 200, y);
-                        ctx.fillText(String(item.quantity), 320, y);
-                        ctx.fillText(
-                          `₹${typeof item.price === "number" ? item.price.toFixed(2) : "0.00"}`,
-                          380,
-                          y
-                        );
-                        ctx.fillText(
-                          `₹${typeof item.price === "number" ? (item.price * item.quantity).toFixed(2) : "0.00"}`,
-                          470,
-                          y
-                        );
-                        y += 30;
-                      });
-
-                      // Totals
-                      y += 10;
-                      ctx.font = "bold 16px Arial";
-                      ctx.fillText(`Total: ₹${viewingBill.total?.toFixed(2) || "0.00"}`, 30, y + 60);
-                      ctx.fillText(
-                        `Status: ${viewingBill.status === "paid" ? "Paid" : "Pending Payment"}`,
-                        30,
-                        y + 90
-                      );
-
-                      // Convert canvas to blob and upload
-                      canvas.toBlob(async (blob) => {
-                        if (!blob) {
-                          toast({
-                            title: "Error",
-                            description: "Could not create invoice image.",
-                            variant: "destructive",
-                          });
-                          return;
-                        }
-                        await uploadInvoiceImageAndShareWhatsApp(
-                          blob,
-                          viewingBill.customerPhone || "",
-                          viewingBill.customerName || "",
-                          viewingBill.orderId || "invoice",
-                          viewingBill.total // Pass amount for UPI link
-                        );
-                      }, "image/png");
-                    };
+                    await generateAndShareInvoice({
+                      orderId: viewingBill.orderId || viewingBill.id,
+                      customerName: viewingBill.customerName,
+                      customerPhone: viewingBill.customerPhone,
+                      items: viewingBill.items,
+                      total: viewingBill.total,
+                      subtotal: viewingBill.subtotal,
+                      tax: viewingBill.tax,
+                      status: viewingBill.status,
+                      createdAt: viewingBill.createdAt,
+                      branch: viewingBill.branch,
+                    });
                   }}
                 >
-                  Share Order Details
+                  <Share2 className="h-4 w-4 mr-2" />
+                  Share Invoice
                 </Button>
               </div>
             </div>
@@ -924,64 +824,3 @@ const ManagePayments = () => {
 };
 
 export default ManagePayments;
-
-// Update the helper function to include payment link in WhatsApp message
-async function uploadInvoiceImageAndShareWhatsApp(
-  imageBlob: Blob,
-  customerPhoneNumber: string,
-  customerName: string,
-  billId: string,
-  amount?: number
-) {
-  // Open a blank tab immediately to avoid popup blockers
-  const whatsappTab = window.open("about:blank", "_blank");
-
-  const cloudName = "djxvembm4";
-  const unsignedUploadPreset = "vkwash_invoice";
-  const fileName = `${customerName.replace(/\s+/g, "_")}-${billId}`;
-  const url = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
-
-  const formData = new FormData();
-  formData.append("file", imageBlob, `${fileName}.png`);
-  formData.append("upload_preset", unsignedUploadPreset);
-  formData.append("public_id", fileName);
-
-  let imageUrl = "";
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      body: formData,
-    });
-    const data = await response.json();
-    if (data.secure_url) {
-      imageUrl = data.secure_url;
-    } else {
-      throw new Error("Cloudinary upload failed");
-    }
-  } catch (err) {
-    toast({
-      title: "Upload Failed",
-      description: "Could not upload invoice image to Cloudinary.",
-      variant: "destructive",
-    });
-    if (whatsappTab) whatsappTab.close();
-    return;
-  }
-
-  // Payment link
-  const upiAmount = amount ? amount.toFixed(2) : "0";
-  const upiLink = `vk149763@okaxis`;
-
-  // WhatsApp message with image link and payment link
-  const phone = customerPhoneNumber.replace(/[^0-9]/g, "");
-  const message = `Hello ${customerName},%0AHere is your VK Wash invoice image:%0A${imageUrl}%0A%0APayment link:%0A${upiLink}`;
-  const whatsappUrl = `https://wa.me/91${phone}?text=${message}`;
-  console.log("Opening WhatsApp with URL:", whatsappUrl);
-
-  if (whatsappTab) {
-    whatsappTab.location.href = whatsappUrl;
-    whatsappTab.focus();
-  } else {
-    window.open(whatsappUrl, "_blank");
-  }
-}
