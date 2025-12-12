@@ -99,7 +99,7 @@ export async function generateAndShareInvoice(invoice: InvoiceData): Promise<voi
     // Share via WhatsApp (open new tab to avoid popup blocker)
     const phone = (invoice.customerPhone || '').replace(/[^0-9]/g, '');
     const upiAmount = Number(invoice.total || 0).toFixed(2);
-    const upiLink = `upi://pay?pa=vk149763@oksbi&pn=Vijay%20Kumar&am=${upiAmount}&cu=INR`;
+    const upiLink = `vk149763@oksbi`;
     const message = `Hello ${invoice.customerName || ''}%0A%0AYour VK Wash invoice is available here:%0A${encodeURIComponent(invoiceUrl || '')}%0A%0AAmount: ₹${upiAmount}%0A%0APay using UPI:%0A${encodeURIComponent(upiLink)}%0A%0AThank you!`;
 
     const whatsappTab = window.open('about:blank', '_blank');

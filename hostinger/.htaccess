@@ -1,0 +1,11 @@
+# Place this in public_html/invoices/.htaccess
+Options -Indexes
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # Force HTTPS
+  RewriteCond %{HTTPS} off
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
+
+# Deny access to metadata.json from the web if you prefer, but invoice HTML needs it server-side.
+# To keep metadata accessible only to server scripts, move metadata.json outside public_html and update code accordingly.
