@@ -1,138 +1,78 @@
 <?php
-// create_invoice.php
-// Safe invoice creator (writes public HTML and metadata). Production-ready.
-// Place this file in public_html/create_invoice.php
-
-ini_set('display_errors', 0);
-ini_set('log_errors', 1);
-ini_set('error_log', __DIR__ . '/logs/error.log');
+ini_set('display_errors', '0');
+error_reporting(0);
 header('Content-Type: application/json; charset=utf-8');
 
-/* ---------- Helpers ---------- */
-
-function respond($code, $payload) {
-  http_response_code($code);
-  echo json_encode($payload);
-  exit;
+function respond($code, $data) {
+    http_response_code($code);
+    echo json_encode($data);
+    exit;
 }
 
-function sanitize_text($s, $maxLen = 500) {
-  $s = trim($s ?? '');
-  $s = strip_tags($s);
-  $s = preg_replace('/[\x00-\x1F\x7F]/u', '', $s);
-  if (mb_strlen($s) > $maxLen) $s = mb_substr($s, 0, $maxLen);
-  return $s;
-}
-
-function is_valid_order_id($id) {
-  return preg_match('/^[A-Za-z0-9_-]{3,64}$/', $id) === 1;
-}
-
-function e($s) {
-  return htmlspecialchars($s ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-}
-
-/* ---------- Read JSON ---------- */
-
-$raw = @file_get_contents('php://input');
+$raw = file_get_contents('php://input');
 $data = json_decode($raw, true);
 if (!is_array($data)) {
-  respond(400, ['success' => false, 'error' => 'Invalid JSON body']);
+    respond(400, ['success' => false, 'error' => 'Invalid JSON']);
 }
 
-try {
-
-  // Validate & sanitize inputs
-  $orderId = sanitize_text($data['orderId'] ?? '', 64);
-  if (!is_valid_order_id($orderId)) {
+$orderId = trim($data['orderId'] ?? '');
+if (!preg_match('/^[A-Za-z0-9_-]{3,64}$/', $orderId)) {
     respond(400, ['success' => false, 'error' => 'Invalid orderId']);
-  }
+}
 
-  $customerName = sanitize_text($data['customerName'] ?? '', 100);
-  $customerPhone = sanitize_text($data['customerPhone'] ?? '', 20);
-  $customerAddress = sanitize_text($data['customerAddress'] ?? '', 200);
-  $creatorIdShort = sanitize_text($data['creatorIdShort'] ?? '', 16);
-  $taxRatePct = floatval($data['taxRatePct'] ?? 0);
-  if ($taxRatePct < 0 || $taxRatePct > 100) $taxRatePct = 0;
+$cfg = require __DIR__ . '/vk_config.php';
+$PUBLIC_ROOT = rtrim($cfg['base_path'], '\/') ?? '/home/u577376970/domains/vkwash.in/public_html';
+$INVOICE_DIR = rtrim($cfg['invoice_path'], '\/') ?? $PUBLIC_ROOT . '/invoices';
+$META_PATH  = $cfg['meta_file'] ?? $INVOICE_DIR . '/metadata.json';
+$EXPIRES_DAYS = intval($cfg['invoice_expires_days'] ?? 180);
 
-  $itemsRaw = $data['items'] ?? [];
-  if (!is_array($itemsRaw) || count($itemsRaw) === 0) {
-    respond(400, ['success' => false, 'error' => 'At least one item required']);
-  }
+if (!is_dir($INVOICE_DIR) && !mkdir($INVOICE_DIR, 0755, true)) {
+    respond(500, ['success' => false, 'error' => 'Failed to create invoices folder']);
+}
 
-  $cleanItems = [];
-  $subtotal = 0.0;
-  foreach ($itemsRaw as $it) {
-    $desc = sanitize_text($it['description'] ?? '', 200);
+$invoiceFile = $INVOICE_DIR . '/' . $orderId . '.html';
+$allowOverwrite = !empty($data['allowOverwrite']);
+
+// compute total and render rows
+$items = is_array($data['items'] ?? null) ? $data['items'] : [];
+$total = 0.0;
+$rows = '';
+$idx = 1;
+foreach ($items as $it) {
     $qty = floatval($it['qty'] ?? 0);
     $unit = floatval($it['unitPrice'] ?? 0);
-    if ($qty <= 0 || $unit < 0 || $desc === '') continue;
     $amount = $qty * $unit;
-    $subtotal += $amount;
-    $cleanItems[] = ['description' => $desc, 'qty' => $qty, 'unitPrice' => $unit, 'amount' => $amount];
-  }
-
-  if (count($cleanItems) === 0) {
-    respond(400, ['success' => false, 'error' => 'No valid items']);
-  }
-
-  $taxAmount = $subtotal * ($taxRatePct / 100.0);
-  $total = $subtotal + $taxAmount;
-
-  /* ---------- Paths & URL ---------- */
-  $baseDir = __DIR__; // public_html
-  $invoiceDir = $baseDir . '/invoices';
-  if (!is_dir($invoiceDir)) {
-    if (!mkdir($invoiceDir, 0755, true)) {
-      respond(500, ['success' => false, 'error' => 'Failed to create invoices directory']);
-    }
-  }
-
-  $invoicePath = $invoiceDir . '/' . $orderId . '.html';
-  $metadataPath = $invoiceDir . '/metadata.json';
-
-  // Construct base URL (trusting HTTP_HOST)
-  $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
-  $host = $_SERVER['HTTP_HOST'] ?? 'vkwash.in';
-  $baseUrl = $scheme . '://' . $host;
-  $publicUrl = $baseUrl . '/invoices/' . rawurlencode($orderId) . '.html';
-
-  // Duplicate protection
-  if (file_exists($invoicePath)) {
-    respond(409, ['success' => false, 'code' => 'ALREADY_EXISTS', 'message' => 'Invoice already exists for orderId', 'url' => $publicUrl]);
-  }
-
-  $createdAt = time();
-  $expiresAt = $createdAt + (180 * 24 * 60 * 60);
-
-  /* ---------- Build invoice HTML via HEREDOC (safe injection with json_encode for JS) ---------- */
-
-  // Build items table rows (escaped)
-  $rowsHtml = '';
-  $idx = 1;
-  foreach ($cleanItems as $it) {
-    $rowsHtml .= '<tr>'
-      . '<td style="width:40px;text-align:center;">' . e($idx) . '</td>'
-      . '<td>' . e($it['description']) . '</td>'
-      . '<td style="text-align:center;">' . e(number_format($it['qty'], 2)) . '</td>'
-      . '<td style="text-align:right;">₹ ' . e(number_format($it['unitPrice'], 2)) . '</td>'
-      . '<td style="text-align:right;">₹ ' . e(number_format($it['amount'], 2)) . '</td>'
-      . '</tr>';
+    $total += $amount;
+    $desc = htmlspecialchars($it['description'] ?? ($it['name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $rows .= "<tr><td style=\"width:40px;text-align:center;\">{$idx}</td><td>". $desc ."</td><td style=\"text-align:center;\">".number_format($qty,2)."</td><td style=\"text-align:right;\">₹ ".number_format($unit,2)."</td><td style=\"text-align:right;\">₹ ".number_format($amount,2)."</td></tr>";
     $idx++;
-  }
+}
 
-  // Values to inject into JS — use json_encode to make them safe JS literals
-  $jsInvoiceId = json_encode($orderId);
-  $jsTotal = json_encode(number_format($total, 2));
-  $jsTotalRaw = json_encode($total); // numeric in JS if needed
+if ($total <= 0) {
+    respond(400, ['success'=>false,'error'=>'Invalid invoice total']);
+}
 
-  $expiryDate = e(date('d M Y', $expiresAt));
-  $createdDate = e(date('d M Y', $createdAt));
-  $subtotalFmt = e(number_format($subtotal, 2));
-  $taxAmountFmt = e(number_format($taxAmount, 2));
-  $totalFmt = e(number_format($total, 2));
+// If file exists and not allowed to overwrite, return 409 with structured payload
+$baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
+if (file_exists($invoiceFile) && !$allowOverwrite) {
+    respond(409, [
+        'success' => false,
+        'code' => 'ALREADY_EXISTS',
+        'message' => 'Invoice already exists for orderId',
+        'url' => $baseUrl . '/invoices/' . $orderId . '.html',
+        'orderId' => $orderId
+    ]);
+}
 
-  $html = <<<HTML
+// Build HTML invoice using the production template requested
+$customerName = htmlspecialchars($data['customerName'] ?? ($data['customer'] ?? 'Customer'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+$customerPhone = htmlspecialchars($data['customerPhone'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+$createdAt = gmdate('j M Y');
+$expiresTs = time() + ($EXPIRES_DAYS * 86400);
+$expiresDate = gmdate('j M Y', $expiresTs);
+$total_display = number_format($total, 2, '.', '');
+
+$html = <<<HTML
 <!doctype html>
 <html>
 <head>
@@ -171,7 +111,7 @@ try {
     <div style="text-align:right">
       <div class="pill">Invoice</div>
       <div class="muted" style="margin-top:6px">Order ID: {$orderId}</div>
-      <div class="muted">Date: {$createdDate}</div>
+      <div class="muted">Date: {$createdAt}</div>
     </div>
   </div>
 
@@ -180,7 +120,7 @@ try {
       <div style="font-weight:600;margin-bottom:6px">Billed To</div>
       <div>{$customerName}</div>
       <div class="muted">{$customerPhone}</div>
-      <div class="muted">{$customerAddress}</div>
+      <div class="muted"></div>
     </div>
     <div>
       <div style="font-weight:600;margin-bottom:6px">From</div>
@@ -194,38 +134,38 @@ try {
     <table class="table" aria-label="Invoice items">
       <thead><tr><th style="width:40px">#</th><th>Description</th><th style="width:96px;text-align:center">Qty</th><th style="width:140px;text-align:right">Unit</th><th style="width:140px;text-align:right">Amount</th></tr></thead>
       <tbody>
-        {$rowsHtml}
+        {$rows}
       </tbody>
     </table>
 
     <div class="totals">
       <div style="text-align:right">
         <div class="label">Subtotal</div>
-        <div>₹ {$subtotalFmt}</div>
-        <div style="margin-top:6px" class="label">Tax ({$taxRatePct}%)</div>
-        <div>₹ {$taxAmountFmt}</div>
-        <div style="margin-top:8px;font-weight:700;font-size:18px;">Total: ₹ {$totalFmt}</div>
+        <div>₹ {$total_display}</div>
+        <div style="margin-top:6px" class="label">Tax (0%)</div>
+        <div>₹ 0.00</div>
+        <div style="margin-top:8px;font-weight:700;font-size:18px;">Total: ₹ {$total_display}</div>
       </div>
     </div>
 
     <div style="margin-top:18px">
       <div id="payment-status" style="font-weight:600;margin-bottom:8px">Status: <span id="ps">Pending</span></div>
       <div id="pay-controls">
-        <button id="pay-btn" class="pay">Pay ₹ {$totalFmt}</button>
+        <button id="pay-btn" class="pay">Pay ₹ {$total_display}</button>
         <button onclick="window.print()" class="print" style="margin-left:10px">Print</button>
       </div>
     </div>
   </div>
 
   <div class="footer">
-    Generated by VK Wash invoice system. Expires on {$expiryDate}. This public link will stop working after expiry.
+    Generated by VK Wash invoice system. Expires on {$expiresDate}. This public link will stop working after expiry.
   </div>
 </div>
 
 <script>
-  const INVOICE_ID = {$jsInvoiceId};
-  const TOTAL_DISPLAY = {$jsTotal};
-  const TOTAL_RAW = {$jsTotalRaw};
+  const INVOICE_ID = "{$orderId}";
+  const TOTAL_DISPLAY = "{$total_display}";
+  const TOTAL_RAW = {$total};
   const POLL_INTERVAL = 5000; // ms
   async function fetchStatus() {
     try {
@@ -242,7 +182,16 @@ try {
       if (s && s.success && s.status === "paid") {
         document.getElementById("ps").textContent = "Paid";
         const btn = document.getElementById("pay-btn");
-        if (btn) btn.style.display = "none";
+        if (btn) {
+          btn.disabled = true;
+          try { btn.textContent = "Payment received"; } catch (e) {}
+        }
+        break;
+      }
+      if (s && s.success && s.status === "failed") {
+        document.getElementById("ps").textContent = "Failed";
+        const btn = document.getElementById("pay-btn");
+        if (btn) btn.disabled = false;
         break;
       }
       await new Promise(r => setTimeout(r, POLL_INTERVAL));
@@ -268,15 +217,15 @@ try {
         alert((data && (data.error || data.message)) || "Failed to initiate payment");
         return;
       }
-      const paymentUrl = data.paymentUrl || data.paymentURL || data.url;
-      if (!paymentUrl) {
+      const redirectUrl = data.redirectUrl || data.redirectURL || data.paymentUrl || data.paymentURL || data.url;
+      if (!redirectUrl) {
         btn.disabled = false;
         btn.textContent = "Pay ₹ " + TOTAL_DISPLAY;
-        alert("Payment URL not available");
+        alert("Redirect URL not available");
         return;
       }
-      const w = window.open(paymentUrl, "_blank");
-      if (!w) window.location.href = paymentUrl;
+      const w = window.open(redirectUrl, "_blank");
+      if (!w) window.location.href = redirectUrl;
       document.getElementById("ps").textContent = "Waiting for payment…";
       startPolling();
     } catch (e) {
@@ -286,62 +235,38 @@ try {
       btn.textContent = "Pay ₹ " + TOTAL_DISPLAY;
     }
   });
+  // Start a background poll immediately so the page reflects current invoice state
+  startPolling();
 </script>
 </body>
 </html>
 HTML;
 
-  /* ---------- Write invoice file ---------- */
-  if (@file_put_contents($invoicePath, $html) === false) {
-    respond(500, ['success' => false, 'error' => 'Failed to write invoice file']);
-  }
-
-  /* ---------- Update metadata.json atomically ---------- */
-  $entry = [
-    'file' => 'invoices/' . $orderId . '.html',
-    'created_at' => gmdate(DATE_ATOM, $createdAt),
-    'expires_at' => gmdate(DATE_ATOM, $expiresAt),
-    'creatorIdShort' => $creatorIdShort,
-    'total' => round($total, 2),
-    'payment_status' => 'pending',
-    'phonepe_transaction' => null,
-  ];
-
-  $metadata = [];
-  if (file_exists($metadataPath)) {
-    $rawMeta = @file_get_contents($metadataPath);
-    $jsonMeta = json_decode($rawMeta, true);
-    if (is_array($jsonMeta)) $metadata = $jsonMeta;
-  }
-  $metadata[$orderId] = $entry;
-
-  // atomic write with lock
-  $fp = @fopen($metadataPath, 'c+');
-  if ($fp === false) {
-    // fallback: try direct write but still report error if it fails
-    if (@file_put_contents($metadataPath, json_encode($metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)) === false) {
-      respond(500, ['success' => false, 'error' => 'Failed to write metadata file']);
-    }
-  } else {
-    if (!flock($fp, LOCK_EX)) {
-      fclose($fp);
-      respond(500, ['success' => false, 'error' => 'Failed to obtain lock for metadata file']);
-    }
-    ftruncate($fp, 0);
-    rewind($fp);
-    if (fwrite($fp, json_encode($metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)) === false) {
-      flock($fp, LOCK_UN);
-      fclose($fp);
-      respond(500, ['success' => false, 'error' => 'Failed to write metadata file']);
-    }
-    fflush($fp);
-    flock($fp, LOCK_UN);
-    fclose($fp);
-  }
-
-  respond(200, ['success' => true, 'url' => $publicUrl, 'orderId' => $orderId]);
-
-} catch (Throwable $e) {
-  error_log('create_invoice error: ' . $e->getMessage());
-  respond(500, ['success' => false, 'error' => 'Server error']);
+if (file_put_contents($invoiceFile, $html) === false) {
+    respond(500, ['success'=>false,'error'=>'Failed to write invoice file']);
 }
+
+// Update metadata
+$meta = [];
+if (file_exists($META_PATH)) {
+    $meta = json_decode(file_get_contents($META_PATH), true) ?: [];
+}
+
+$meta[$orderId] = [
+    'status' => 'pending',
+    'total' => $total,
+    'customerName' => $data['customerName'] ?? ($data['customer'] ?? ''),
+    'customerPhone' => preg_replace('/\D/', '', $data['customerPhone'] ?? ''),
+    'created_at' => gmdate(DATE_ATOM),
+    'file' => 'invoices/' . $orderId . '.html',
+    'expiresAt' => $expiresTs,
+    'payment_status' => 'pending'
+];
+
+file_put_contents($META_PATH, json_encode($meta, JSON_PRETTY_PRINT));
+
+respond(200, [
+    'success' => true,
+    'url' => $baseUrl . '/invoices/' . $orderId . '.html',
+    'orderId' => $orderId
+]);
