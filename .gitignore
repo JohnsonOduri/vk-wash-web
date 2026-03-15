@@ -12,7 +12,11 @@ lerna-debug.log*
 .env.*
 /server/.env
 firebase-debug.log
-
+/firebase.rules
+/firestore.rules
+/storage.rules
+/firebase.json
+/firebase.rc    
 # Build and IDE files
 node_modules
 dist
@@ -21,6 +25,8 @@ dist-ssr
 .vscode/*
 .idea
 .DS_Store
+
+
 
 # Editor directories and files
 *.suo

@@ -1,73 +1,82 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
 
-    // USERS: Authenticated users can read/write their own user document
+    function isAdmin() {
+      return isSignedIn() &&
+        request.auth.token.email != null &&
+        request.auth.token.email == "vk149763@gmail.com";
+    }
+
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow write: if isSignedIn() && request.auth.uid == userId;
     }
 
-    // ORDERS: Secure access for different roles
     match /orders/{orderId} {
-      // Allow all authenticated users to read orders
-      allow read: if request.auth != null;
-
-      // Allow creating orders if userId matches auth UID
-      allow create: if request.auth != null &&
-        request.resource.data.userId == request.auth.uid;
-
-      // Allow updating orders with role-based conditions
-      allow update: if request.auth != null && (
-        // Delivery person updating an assigned order
-        (request.auth.token.role == 'delivery' &&
-         resource.data.deliveryPersonId == request.auth.uid) ||
-
-        // Delivery person assigning themselves to an unassigned order
-        (request.auth.token.role == 'delivery' &&
-         resource.data.deliveryPersonId == null &&
-         request.resource.data.deliveryPersonId == request.auth.uid) ||
-
-        // Customers updating their own orders
+      allow read, list: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        isAdmin() ||
         resource.data.userId == request.auth.uid ||
-
-        // Admins can update all orders
-        request.auth.token.role == 'admin' ||
-
-        // Delivery person updating the status of assigned orders
-        resource.data.deliveryPersonId == request.auth.uid
+        resource.data.deliveryPersonId == request.auth.uid ||
+        (resource.data.deliveryPersonId == null &&
+         request.resource.data.deliveryPersonId == request.auth.uid)
       );
-
-      // Allow listing orders for all authenticated users
-      allow list: if request.auth != null;
-
-      // Allow delete access for admins and delivery for active orders
-      allow delete: if request.auth != null && (
-        request.auth.token.role == 'admin' ||
-        (request.auth.token.role == 'delivery' &&
-         resource.data.status == 'active')
-      );
+      allow delete: if isAdmin();
     }
 
-    // BILLS: Customers can access their own, admins can access all
     match /bills/{billId} {
-      allow read, write: if request.auth != null && (
-        resource.data.customerId == request.auth.uid ||
-        request.auth.token.role == 'admin'
+      allow read, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && (
+        isAdmin() || resource.data.customerId == request.auth.uid
       );
     }
 
-    // LAUNDRY ITEMS: Read-only access for all authenticated users
-    match /laundryItems/{itemId} {
-      allow read: if request.auth != null;
+    match /customers/{customerId} {
+      allow read, list: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
     }
 
-    // DELIVERY ITEMS: Only assigned delivery person can read/write
+    match /reviews/{reviewId} {
+      allow read, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
+    }
+
+    match /laundryItems/{itemId} {
+      allow read, list: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
+    }
+
     match /deliveryItems/{itemId} {
-      allow read, write: if request.auth != null &&
+      allow read, write: if isSignedIn() &&
         resource.data.deliveryPersonId == request.auth.uid;
     }
 
-    // DEFAULT DENY: Block all other unspecified access
+    match /counters/{counterId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /sessions/{sessionId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /activityLogs/{logId} {
+      allow read, list: if isAdmin();
+      allow write: if false;
+    }
+
+    match /loginLogs/{logId} {
+      allow read, list: if isAdmin();
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

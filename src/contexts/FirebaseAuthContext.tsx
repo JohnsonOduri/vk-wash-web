@@ -6,11 +6,12 @@ import {
   signOut, 
   onAuthStateChanged,
   GoogleAuthProvider,
-  signInWithPopup,
-  User as FirebaseUser
+  signInWithPopup
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+import { toast } from "@/hooks/use-toast";
+import { recordLogin } from "@/services/loginLogService";
 
 type UserRole = "customer" | "delivery" | null;
 
@@ -42,9 +43,16 @@ interface FirebaseAuthContextType {
 
 const FirebaseAuthContext = createContext<FirebaseAuthContextType | undefined>(undefined);
 
+const LAST_LOGIN_KEY = "vkwash_last_login_day";
+
 export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const getTodayKey = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -77,6 +85,57 @@ export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
     
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const today = getTodayKey();
+    const lastLogin = localStorage.getItem(LAST_LOGIN_KEY);
+    if (lastLogin && lastLogin !== today) {
+      toast({
+        title: "Session expired",
+        description: "Your session expired. Please sign in again.",
+        variant: "destructive",
+      });
+      logout();
+      return;
+    }
+
+    if (!lastLogin || lastLogin !== today) {
+      const deviceInfo = typeof navigator !== "undefined" ? navigator.userAgent : "";
+      recordLogin({
+        email: user.email,
+        userId: user.id,
+        deviceInfo,
+      })
+        .then(() => {
+          localStorage.setItem(LAST_LOGIN_KEY, today);
+        })
+        .catch((err) => {
+          console.error("Failed to record login", err);
+        });
+    }
+
+    const now = new Date();
+    const logoutAt = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 0);
+    const timeoutMs = logoutAt.getTime() - now.getTime();
+
+    if (timeoutMs <= 0) {
+      logout();
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      toast({
+        title: "Session expired",
+        description: "Your session expired. Please sign in again.",
+        variant: "destructive",
+      });
+      logout();
+    }, timeoutMs);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [user]);
 
   // Generate a 5-digit unique ID based on identifier (email or phone)
   const generateUniqueId = (identifier: string): string => {
@@ -127,6 +186,18 @@ export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
         await setDoc(doc(db, "users", firebaseUser.uid), userData);
       }
       
+      try {
+        const deviceInfo = typeof navigator !== "undefined" ? navigator.userAgent : "";
+        await recordLogin({
+          email: firebaseUser.email,
+          userId: firebaseUser.uid,
+          deviceInfo,
+        });
+        localStorage.setItem(LAST_LOGIN_KEY, getTodayKey());
+      } catch (err) {
+        console.error("Failed to record login", err);
+      }
+
       setIsLoading(false);
       return true;
     } catch (error) {
@@ -159,6 +230,18 @@ export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
         await setDoc(doc(db, "users", firebaseUser.uid), userData);
       }
       
+      try {
+        const deviceInfo = typeof navigator !== "undefined" ? navigator.userAgent : "";
+        await recordLogin({
+          email: firebaseUser.email,
+          userId: firebaseUser.uid,
+          deviceInfo,
+        });
+        localStorage.setItem(LAST_LOGIN_KEY, getTodayKey());
+      } catch (err) {
+        console.error("Failed to record login", err);
+      }
+
       setIsLoading(false);
       return true;
     } catch (error) {
