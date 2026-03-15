@@ -19,7 +19,31 @@ export const recordLogin = async (payload: {
     userId: payload.userId || null,
     deviceInfo: payload.deviceInfo || null,
     loggedAt: serverTimestamp(),
+    loggedAtMs: Date.now(),
   });
+};
+
+export const hasLoginLogForToday = async (email?: string | null): Promise<boolean> => {
+  if (!email) return false;
+
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).getTime();
+
+  const q = query(
+    collection(db, "loginLogs"),
+    where("email", "==", email)
+  );
+
+  const snapshot = await getDocs(q);
+  for (const docSnap of snapshot.docs) {
+    const data = docSnap.data();
+    const loggedAtMs = typeof data.loggedAtMs === "number" ? data.loggedAtMs : null;
+    if (loggedAtMs && loggedAtMs >= start && loggedAtMs <= end) {
+      return true;
+    }
+  }
+  return false;
 };
 
 export const getLoginLogsLastDays = async (days: number): Promise<LoginLog[]> => {

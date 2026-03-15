@@ -11,7 +11,8 @@ import {
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { toast } from "@/hooks/use-toast";
-import { recordLogin } from "@/services/loginLogService";
+import { hasLoginLogForToday, recordLogin } from "@/services/loginLogService";
+import { isAdminEmail } from "@/lib/admin";
 
 type UserRole = "customer" | "delivery" | null;
 
@@ -42,16 +43,45 @@ interface FirebaseAuthContextType {
 }
 
 const FirebaseAuthContext = createContext<FirebaseAuthContextType | undefined>(undefined);
-
-const LAST_LOGIN_KEY = "vkwash_last_login_day";
+const PENDING_LOGIN_KEY = "vkwash_pending_login";
 
 export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const getTodayKey = () => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const setPendingLogin = (email?: string | null) => {
+    if (!email) return;
+    try {
+      localStorage.setItem(
+        PENDING_LOGIN_KEY,
+        JSON.stringify({ email: email.toLowerCase(), startedAt: Date.now() })
+      );
+    } catch (err) {
+      // ignore storage errors
+    }
+  };
+
+  const clearPendingLogin = () => {
+    try {
+      localStorage.removeItem(PENDING_LOGIN_KEY);
+    } catch (err) {
+      // ignore storage errors
+    }
+  };
+
+  const shouldUsePendingGrace = (email?: string) => {
+    if (!email) return false;
+    try {
+      const raw = localStorage.getItem(PENDING_LOGIN_KEY);
+      if (!raw) return false;
+      const parsed = JSON.parse(raw) as { email?: string; startedAt?: number };
+      if (!parsed?.email || typeof parsed.startedAt !== "number") return false;
+      const sameEmail = parsed.email === email.toLowerCase();
+      const withinGrace = Date.now() - parsed.startedAt <= 20000;
+      return sameEmail && withinGrace;
+    } catch (err) {
+      return false;
+    }
   };
 
   useEffect(() => {
@@ -89,31 +119,46 @@ export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!user) return;
 
-    const today = getTodayKey();
-    const lastLogin = localStorage.getItem(LAST_LOGIN_KEY);
-    if (lastLogin && lastLogin !== today) {
-      toast({
-        title: "Session expired",
-        description: "Your session expired. Please sign in again.",
-        variant: "destructive",
-      });
-      logout();
-      return;
-    }
+    let cancelled = false;
+    const shouldValidateDailyLogin = user.role === "delivery" || isAdminEmail(user.email);
+    if (shouldValidateDailyLogin) {
+      const validate = async (attempt = 0): Promise<void> => {
+        try {
+          const hasTodayLog = await hasLoginLogForToday(user.email);
+          if (cancelled) return;
 
-    if (!lastLogin || lastLogin !== today) {
-      const deviceInfo = typeof navigator !== "undefined" ? navigator.userAgent : "";
-      recordLogin({
-        email: user.email,
-        userId: user.id,
-        deviceInfo,
-      })
-        .then(() => {
-          localStorage.setItem(LAST_LOGIN_KEY, today);
-        })
-        .catch((err) => {
-          console.error("Failed to record login", err);
-        });
+          if (hasTodayLog) {
+            clearPendingLogin();
+            return;
+          }
+
+          const canRetry = shouldUsePendingGrace(user.email) && attempt < 4;
+          if (canRetry) {
+            window.setTimeout(() => {
+              validate(attempt + 1);
+            }, 1200);
+            return;
+          }
+
+          toast({
+            title: "Session expired",
+            description: "No login record found for today. Please sign in again.",
+            variant: "destructive",
+          });
+          logout();
+        } catch (err) {
+          if (cancelled) return;
+          console.error("Failed to validate daily login", err);
+          toast({
+            title: "Session validation failed",
+            description: "Please sign in again.",
+            variant: "destructive",
+          });
+          logout();
+        }
+      };
+
+      validate();
     }
 
     const now = new Date();
@@ -134,7 +179,10 @@ export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
       logout();
     }, timeoutMs);
 
-    return () => window.clearTimeout(timeoutId);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
   }, [user]);
 
   // Generate a 5-digit unique ID based on identifier (email or phone)
@@ -187,13 +235,13 @@ export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       try {
+        setPendingLogin(firebaseUser.email);
         const deviceInfo = typeof navigator !== "undefined" ? navigator.userAgent : "";
         await recordLogin({
           email: firebaseUser.email,
           userId: firebaseUser.uid,
           deviceInfo,
         });
-        localStorage.setItem(LAST_LOGIN_KEY, getTodayKey());
       } catch (err) {
         console.error("Failed to record login", err);
       }
@@ -231,13 +279,13 @@ export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       try {
+        setPendingLogin(firebaseUser.email || email);
         const deviceInfo = typeof navigator !== "undefined" ? navigator.userAgent : "";
         await recordLogin({
           email: firebaseUser.email,
           userId: firebaseUser.uid,
           deviceInfo,
         });
-        localStorage.setItem(LAST_LOGIN_KEY, getTodayKey());
       } catch (err) {
         console.error("Failed to record login", err);
       }
@@ -297,6 +345,7 @@ export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await signOut(auth);
       setUser(null);
+      clearPendingLogin();
     } catch (error) {
       console.error("Logout error:", error);
     }
